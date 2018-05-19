@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/jsqlstreamstore-core/jsqlstreamstore-core.iml" filepath="$PROJECT_DIR$/jsqlstreamstore-core/jsqlstreamstore-core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/jsqlstreamstore-mssql/jsqlstreamstore-mssql.iml" filepath="$PROJECT_DIR$/jsqlstreamstore-mssql/jsqlstreamstore-mssql.iml" />
+      <module fileurl="file://$PROJECT_DIR$/jsqlstreamstore-oracle/jsqlstreamstore-oracle.iml" filepath="$PROJECT_DIR$/jsqlstreamstore-oracle/jsqlstreamstore-oracle.iml" />
+      <module fileurl="file://$PROJECT_DIR$/jsqlstreamstore-parent.iml" filepath="$PROJECT_DIR$/jsqlstreamstore-parent.iml" />
+      <module fileurl="file://$PROJECT_DIR$/jsqlstreamstore-postgres/jsqlstreamstore-postgres.iml" filepath="$PROJECT_DIR$/jsqlstreamstore-postgres/jsqlstreamstore-postgres.iml" />
+    </modules>
+  </component>
+</project>

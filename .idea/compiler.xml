@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="jsqlstreamstore-core" />
+        <module name="jsqlstreamstore-mssql" />
+        <module name="jsqlstreamstore-oracle" />
+        <module name="jsqlstreamstore-postgres" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="jsqlstreamstore-core" target="1.8" />
+      <module name="jsqlstreamstore-mssql" target="1.8" />
+      <module name="jsqlstreamstore-oracle" target="1.7" />
+      <module name="jsqlstreamstore-parent" target="1.7" />
+      <module name="jsqlstreamstore-postgres" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+</project>
