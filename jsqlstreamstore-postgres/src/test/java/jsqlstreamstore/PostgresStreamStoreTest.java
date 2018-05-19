@@ -79,6 +79,23 @@ public class PostgresStreamStoreTest {
     }
 
     @Test
+    public void readStreamForwardsEqualToCount() throws SQLException {
+        NewStreamMessage newMessage = new NewStreamMessage(
+            Generators.timeBasedGenerator().generate(),
+            "someType",
+            "{\"name\":\"Sean\"}");
+
+        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
+
+        ReadStreamPage page = store.readStreamForwards("test", 0, 1, false);
+
+        assertTrue(page.isEnd());
+        assertEquals(ReadDirection.FORWARD, page.getReadDirection());
+        assertEquals(1, page.getMessages().length);
+        assertEquals(newMessage.getMessageId(), page.getMessages()[0].getMessageId());
+    }
+
+    @Test
     public void readAllForwardNext() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
@@ -100,6 +117,8 @@ public class PostgresStreamStoreTest {
         assertEquals(1, page2.getMessages().length);
         assertEquals(newMessageToo.getMessageId(), page2.getMessages().clone()[0].getMessageId());
     }
+
+    // TODO: add a test for max count equal to Integer.MAX_VALUE
 
     @Test
     public void readAllBackwardsTest() throws SQLException {

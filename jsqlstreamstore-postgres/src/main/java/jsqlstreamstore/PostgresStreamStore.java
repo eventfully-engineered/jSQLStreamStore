@@ -42,22 +42,18 @@ public class PostgresStreamStore extends StreamStoreBase {
 
     @Override
     public ReadAllPage readAllForwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException {
-        int count = maxCount == Integer.MAX_VALUE ? maxCount - 1 : maxCount;
         long ordinal = fromPositionExclusive;
 
+        int resultSetCount;
         String commandText = prefetch ? scripts.readAllForwardWithData() : scripts.readAllForward();
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setLong(1, ordinal);
-            stmt.setInt(2, count + 1); // Read extra row to see if at end or not
+            stmt.setInt(2, maxCount == Integer.MAX_VALUE ? maxCount : maxCount + 1); // Read extra row to see if at end or not
 
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
-                    // TODO: I do not like this
-                    // skip count + 1 message from being processed
-                    if (messages.size() == maxCount) {
-                        messages.add(null);
-                    } else {
+                    if (messages.size() < maxCount) {
                         String streamId = result.getString(1);
                         int streamVersion = result.getInt(2);
                         ordinal = result.getLong(3);
@@ -85,6 +81,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                         messages.add(message);
                     }
                 }
+                resultSetCount = result.getRow();
             }
 
             if (messages.isEmpty()) {
@@ -97,43 +94,31 @@ public class PostgresStreamStore extends StreamStoreBase {
                     new StreamMessage[0]);
             }
 
-            boolean isEnd = true;
-            // TODO: not a fan of adding null above and then removing it
-            // An extra row was read, we're not at the end
-            if (messages.size() == count + 1)  {
-                isEnd = false;
-                messages.remove(count);
-            }
-
             long nextPosition = Iterables.getLast(messages).getPosition() + 1;
             return new ReadAllPage(
-                    fromPositionExclusive,
-                    nextPosition,
-                    isEnd,
-                    ReadDirection.FORWARD,
-                    readNextAllPage,
-                    messages.toArray(new StreamMessage[messages.size()]));
+                fromPositionExclusive,
+                nextPosition,
+                maxCount >= resultSetCount,
+                ReadDirection.FORWARD,
+                readNextAllPage,
+                messages.toArray(new StreamMessage[messages.size()]));
         }
     }
 
     @Override
     public ReadAllPage readAllBackwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException {
-        int count = maxCount == Integer.MAX_VALUE ? maxCount - 1 : maxCount;
         long ordinal = fromPositionExclusive == Position.END ? Long.MAX_VALUE : fromPositionExclusive;
 
+        int resultSetCount;
         String commandText = prefetch ? scripts.readAllBackwardWithData() : scripts.readAllBackward();
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setLong(1, ordinal);
-            stmt.setInt(2, count + 1); // Read extra row to see if at end or not
+            stmt.setInt(2, maxCount == Integer.MAX_VALUE ? maxCount : maxCount + 1); // Read extra row to see if at end or not
 
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
-                    // TODO: I do not like this
-                    // skip count + 1 message from being processed
-                    if (messages.size() == maxCount) {
-                        messages.add(null);
-                    } else {
+                    if (messages.size() < maxCount) {
                         String streamId = result.getString(1);
                         int streamVersion = result.getInt(2);
                         ordinal = result.getLong(3);
@@ -161,6 +146,8 @@ public class PostgresStreamStore extends StreamStoreBase {
                         messages.add(message);
                     }
                 }
+
+                resultSetCount = result.getRow();
             }
 
             if (messages.isEmpty()) {
@@ -173,19 +160,11 @@ public class PostgresStreamStore extends StreamStoreBase {
                     new StreamMessage[0]);
             }
 
-            boolean isEnd = true;
-            // TODO: not a fan of adding null above and then removing it
-            // An extra row was read, we're not at the end
-            if (messages.size() == count + 1)  {
-                isEnd = false;
-                messages.remove(count);
-            }
-
             long nextPosition = Iterables.getLast(messages).getPosition() + 1;
             return new ReadAllPage(
                     fromPositionExclusive,
                     nextPosition,
-                    isEnd,
+                maxCount >= resultSetCount,
                     ReadDirection.BACKWARD,
                     readNextAllPage,
                     messages.toArray(new StreamMessage[messages.size()]));
@@ -713,9 +692,6 @@ public class PostgresStreamStore extends StreamStoreBase {
             boolean prefetch,
             ReadNextStreamPage readNext,
             Connection connection) throws SQLException {
-        // If the count is int.MaxValue, TSql will see it as a negative number.
-        // Users shouldn't be using int.MaxValue in the first place anyway.
-        count = count == Integer.MAX_VALUE ? count - 1 : count;
 
         // To read backwards from end, need to use int MaxValue
         int streamVersion = start == StreamVersion.END ? Integer.MAX_VALUE : start;
@@ -744,7 +720,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             cstmt.setString(1, sqlStreamId.getId());
             cstmt.setInt(2, streamVersion);
-            cstmt.setInt(3, count + 1);
+            cstmt.setInt(3, count == Integer.MAX_VALUE ? count : count + 1);
             cstmt.registerOutParameter(4, Types.INTEGER);
             cstmt.registerOutParameter(5, Types.BIGINT);
             cstmt.registerOutParameter(6, Types.REF_CURSOR);
@@ -769,15 +745,12 @@ public class PostgresStreamStore extends StreamStoreBase {
             }
             Long lastStreamPosition = cstmt.getLong(5);
 
+            int resultSetCount = 0;
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = (ResultSet) cstmt.getObject(6)) {
 
                 while(result.next()) {
-                    // TODO: I do not like this
-                    // skip count + 1 message from being processed
-                    if (messages.size() == count) {
-                        messages.add(null);
-                    } else {
+                    if (messages.size() < count) {
                         int streamVersion1 = result.getInt(1);
                         long ordinal = result.getLong(2);
                         UUID messageId = (UUID) result.getObject(3);
@@ -803,15 +776,8 @@ public class PostgresStreamStore extends StreamStoreBase {
 
                         messages.add(message);
                     }
+                    resultSetCount = result.getRow();
                 }
-            }
-
-            // TODO: not a fan of adding null above and then removing it
-            // An extra row was read, we're not at the end
-            boolean isEnd = true;
-            if (messages.size() == count + 1) {
-                isEnd = false;
-                messages.remove(count);
             }
 
             return new ReadStreamPage(
@@ -822,7 +788,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                 lastStreamVersion,
                 lastStreamPosition,
                 direction,
-                isEnd,
+                count >= resultSetCount,
                 readNext,
                 messages.toArray(new StreamMessage[messages.size()]));
         }
