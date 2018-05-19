@@ -5,3 +5,14 @@
 *.iws
 *.ipr
 .idea/
+
+# ignore eclipse files and folders
+.project
+.classpath
+.settings
+.metadata
+.scala_dependencies
+.externalToolBuilders
+/.metadata
+/.recommenders
+/RemoteSystemsTempFiles
