@@ -9,7 +9,7 @@ import jsqlstreamstore.subscriptions.*;
 import java.sql.SQLException;
 
 /**
- * TODO: Do we want to make everything async (Future) by default?
+ * Represents a readonly stream store.
  *
  */
 public interface IReadOnlyStreamStore {
@@ -17,19 +17,19 @@ public interface IReadOnlyStreamStore {
 
     /**
      *
-     * @param fromPositionInclusive - position to start reading from. Use Position.START to start from the beginning
-     * @param maxCount - maximum number of events to read
-     * @param prefetch
-     * @return
+     * @param fromPositionInclusive position to start reading from. Use Position.START to start from the beginning
+     * @param maxCount maximum number of events to read
+     * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
+     * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
     ReadAllPage readAllForwards(long fromPositionInclusive, int maxCount, boolean prefetch) throws SQLException;
 
     /**
      *
      * @param fromPositionInclusive The position to start reading from. Use Position.END to start from the end.
-     * @param maxCount
-     * @param prefetch
-     * @return
+     * @param maxCount maximum number of events to read
+     * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
+     * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
     ReadAllPage readAllBackwards(long fromPositionInclusive, int maxCount, boolean prefetch) throws SQLException;
 
@@ -38,8 +38,8 @@ public interface IReadOnlyStreamStore {
      * @param streamId the stream id to read
      * @param fromVersionInclusive The version of the stream to start reading from. Use StreamVersion.Start to read from the start.
      * @param maxCount maximum number of events to read
-     * @param prefetch
-     * @return
+     * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
+     * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
     ReadStreamPage readStreamForwards(
         String streamId,
@@ -52,8 +52,8 @@ public interface IReadOnlyStreamStore {
      * @param streamId the stream id to read
      * @param fromVersionInclusive The version of the stream to start reading from. Use StreamVersion.End to read from the end
      * @param maxCount maximum number of events to read
-     * @param prefetch
-     * @return
+     * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
+     * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
     ReadStreamPage readStreamBackwards(String streamId,
                                        int fromVersionInclusive,
@@ -62,7 +62,7 @@ public interface IReadOnlyStreamStore {
 
 
 	/**
-	 * Reads the head position (the postion of the very latest message).
+	 * Reads the head position (the position of the very latest message).
 	 * @return the head position
 	 */
 	Long readHeadPosition();

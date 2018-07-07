@@ -12,9 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 /**
@@ -23,8 +21,12 @@ import java.util.function.Consumer;
  */
 public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements IStreamStore {
 
+    // SynchronousQueue
     private final Queue<Consumer> purgeQueue = new ArrayBlockingQueue<>(100);
     private final ExecutorService purgeExecutor = Executors.newSingleThreadExecutor();
+
+    ExecutorService exService = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+    ExecutorService executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new ThreadPoolExecutor.CallerRunsPolicy());
 
     protected final Logger logger = LoggerFactory.getLogger(StreamStoreBase.class);
 
@@ -35,13 +37,13 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
     }
 
     @Override
-    public AppendResult appendToStream(String streamId, int expectedVersion, NewStreamMessage message) {
+    public AppendResult appendToStream(String streamId, int expectedVersion, NewStreamMessage message) throws SQLException {
 	    Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
 	    Preconditions.checkNotNull(message);
 
 	    logger.debug("AppendToStream {} with expected version {}", streamId, expectedVersion);
 
-	    return null;
+	    return appendToStream(streamId, expectedVersion, new NewStreamMessage[] { message });
     }
 
     @Override
@@ -127,31 +129,19 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 	 */
     protected abstract int getStreamMessageCount(String streamId) throws SQLException;
 
-
-//    /// <summary>
-//    ///     Queues a task to purge expired message.
-//    /// </summary>
-//    /// <param name="streamMessage"></param>
-//    protected override void PurgeExpiredMessage(StreamMessage streamMessage)
-//    {
-//        _taskQueue.Enqueue(ct => DeleteEventInternal(streamMessage.StreamId, streamMessage.MessageId, ct));
-//    }
-
-
     /**
      * Queues a task to purge expired message.
-     * @param streamMessage
+     * @param streamMessage The message to purge
      */
     @Override
     protected void purgeExpiredMessage(StreamMessage streamMessage) throws SQLException {
-//        purgeQueue.add(new Consumer<StreamMessage>() {
-//            @Override
-//            public void accept(StreamMessage messsage) {
-//                //deleteMessageInternal(streamMessage.getStreamId(), streamMessage.getMessageId());
-//            }
-//        });
-        // TODO: this needs to queue a task. Executorservice
-        deleteMessageInternal(streamMessage.getStreamId(), streamMessage.getMessageId());
+        purgeExecutor.execute(() -> {
+            try {
+                deleteMessageInternal(streamMessage.getStreamId(), streamMessage.getMessageId());
+            } catch (SQLException e) {
+                logger.error("failed to purge expired message {}", streamMessage, e);
+            }
+        });
     }
 
     protected abstract AppendResult appendToStreamInternal(String streamId, int expectedVersion,

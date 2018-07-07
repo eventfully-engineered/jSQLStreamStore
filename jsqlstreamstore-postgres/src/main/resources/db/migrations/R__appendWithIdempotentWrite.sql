@@ -17,8 +17,7 @@ BEGIN
 	END IF;
 
 	-- lock?
-	SELECT public.Streams.IdInternal, public.Streams."Version" into
-			v_streamIdInternal, lastestStreamVersion
+	SELECT public.Streams.IdInternal, public.Streams."Version" into v_streamIdInternal, lastestStreamVersion
     FROM public.Streams
     WHERE public.Streams.Id = streamId;
 

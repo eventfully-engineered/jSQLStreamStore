@@ -18,7 +18,9 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 
 // TODO: double check data types: int vs Integer vs long vs Long
 public class PostgresStreamStore extends StreamStoreBase {
@@ -202,12 +204,15 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    public Long readHeadPositionInternal() throws SQLException {
+    public Long readHeadPositionInternal() {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(scripts.readHeadPosition());
                 ResultSet result = stmt.executeQuery()) {
             result.next();
             // TODO: use constant
             return result.wasNull() ? -1L : result.getLong(1);
+        } catch (SQLException ex) {
+            // TODO: do we want to throw SqlException?
+            throw new RuntimeException(ex);
         }
     }
 
@@ -298,6 +303,29 @@ public class PostgresStreamStore extends StreamStoreBase {
             messages);
     }
 
+    // Deadlocks appear to be a fact of life when there is high contention on a table regardless of transaction isolation settings.
+    private static <T> T retryOnDeadLock(Callable<T> operation) throws Exception {
+        // TODO too much? too little? configurable?
+        int maxRetries = 2;
+        Exception exception = null;
+
+        int retryCount = 0;
+        do {
+            try {
+                return operation.call();
+            } catch(SQLException ex) {
+                // Deadlock error codes;
+                if (ex.getErrorCode() == 1205 || ex.getErrorCode() == 1222) {
+                    exception = ex;
+                    retryCount++;
+                }
+            }
+        } while(retryCount < maxRetries);
+
+        throw exception;
+    }
+
+
     @Override
     protected void deleteStreamInternal(String streamId, int expectedVersion) throws SQLException {
         SqlStreamId sqlStreamId = new SqlStreamId(streamId);
@@ -348,7 +376,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             Array array = connection.createArrayOf("NewMessage", objects);
             cstmt.setObject(3, array, Types.ARRAY);
 
-            boolean executeResult = cstmt.execute();
+            cstmt.execute();
             connection.commit();
 
             try (ResultSet rs = cstmt.getResultSet()) {
@@ -361,8 +389,11 @@ public class PostgresStreamStore extends StreamStoreBase {
             }
 
         } catch (SQLException ex) {
+            connection.rollback();
+            // Should we catch a PGSqlException instead?
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L177
             // SQLIntegrityConstraintViolationException
+            // TODO: fix thix. should be contains but SqlCode might be better????
             if ("IX_Messages_StreamIdInternal_Id".equals(ex.getMessage())) {
                 int streamVersion = getStreamVersionOfMessageId(
                     connection,
@@ -385,7 +416,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                    if (messages[i].getMessageId() != page.getMessages()[i].getMessageId()) {
+                    if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
                             ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
                             ex);
@@ -397,7 +428,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                     page.getLastStreamPosition());
             }
 
-            // TODO: fix this
+            // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
                     ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
@@ -461,9 +492,21 @@ public class PostgresStreamStore extends StreamStoreBase {
                 return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
             }
         } catch (SQLException ex) {
+            // Should we catch a PGSqlException instead?
+            // might be better to use idempotent write in sql script such as SqlStreamStore postgres
+            connection.rollback();
+
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L177
             // SQLIntegrityConstraintViolationException
-            if ("IX_Streams_Id".equals(ex.getMessage())) {
+            // 23505
+            // ix_streams_id
+
+            // TODO: this doesnt appear to work
+            if (ex instanceof SQLIntegrityConstraintViolationException) {
+                System.out.println("integrity constraint violation");
+            }
+
+            if ("23505".equals(ex.getSQLState())) {
                 ReadStreamPage page = readStreamInternal(
                     sqlStreamId,
                     StreamVersion.START,
@@ -480,7 +523,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                    if (messages[i].getMessageId() != page.getMessages()[i].getMessageId()) {
+                    if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
                             ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
                             ex);
@@ -492,7 +535,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                     page.getLastStreamPosition());
             }
 
-            // TODO: fix this
+            // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
                     ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
@@ -559,6 +602,8 @@ public class PostgresStreamStore extends StreamStoreBase {
             }
 
         } catch (SQLException ex) {
+            connection.rollback();
+            // Should we catch a PGSqlException instead?
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L372
             if ("WrongExpectedVersion".equals(ex.getMessage())) {
                 ReadStreamPage page = readStreamInternal(
@@ -577,7 +622,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                    if (messages[i].getMessageId() != page.getMessages()[i].getMessageId()) {
+                    if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
                             ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
                             ex);
@@ -589,7 +634,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                     page.getLastStreamPosition());
             }
 
-            // TODO: fix this
+            // TODO: fix this...this
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
                     ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
@@ -729,19 +774,19 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             Integer lastStreamVersion = cstmt.getInt(4);
             // streamNotFound page
-            // TODO: not sure how much I like this. Definitely want to replace with constants
             if (cstmt.wasNull()) {
                 return new ReadStreamPage(
                     sqlStreamId.getOriginalId(),
                     PageReadStatus.STREAM_NOT_FOUND,
                     start,
-                    -1,
-                    -1,
-                    -1,
+                    StreamVersion.END,
+                    StreamVersion.END,
+                    Position.END,
                     direction,
                     true,
                     readNext
                 );
+
             }
             Long lastStreamPosition = cstmt.getLong(5);
 
@@ -808,7 +853,7 @@ public class PostgresStreamStore extends StreamStoreBase {
         }
     }
 
-    // TDOO: make async/reactive
+    // TODO: make async/reactive
     private void checkStreamMaxCount(String streamId, Integer maxCount) throws SQLException {
         if (maxCount != null) {
             Integer count = getStreamMessageCount(streamId);

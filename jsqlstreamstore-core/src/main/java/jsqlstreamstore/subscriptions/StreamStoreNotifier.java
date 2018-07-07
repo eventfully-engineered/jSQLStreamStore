@@ -1,11 +1,12 @@
 package jsqlstreamstore.subscriptions;
 
-import java.io.Closeable;
+import io.reactivex.ObservableSource;
 
 /**
- *  Represents an notifier lets subsribers know that the stream store has new messages.
+ *  Represents an notifier lets subscribers know that the stream store has new messages.
  */
-// Observable
-public interface StreamStoreNotifier extends Closeable {
+// TODO: should this use ObservableSource, which doesn't allow for back-pressure, to something that does?
+// Perhaps something like Flowable or Publisher?
+public interface StreamStoreNotifier extends ObservableSource<Long> {
 
 }

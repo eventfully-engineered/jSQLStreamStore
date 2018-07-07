@@ -113,7 +113,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 
 	@Override
 	public Long readHeadPosition() {
-		return readHeadPosition();
+		return readHeadPositionInternal();
 	}
 
 	@Override
@@ -174,7 +174,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 
 	protected abstract ReadStreamPage readStreamBackwardsInternal(String streamId, int fromVersionInclusive, int count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
 
-	protected abstract Long readHeadPositionInternal() throws SQLException;
+	protected abstract Long readHeadPositionInternal();
 
 	protected abstract StreamMetadataResult getStreamMetadataInternal(String streamId) throws SQLException;
 

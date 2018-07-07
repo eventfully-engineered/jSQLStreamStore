@@ -1,6 +1,7 @@
 package jsqlstreamstore;
 
 import com.fasterxml.uuid.Generators;
+import org.apache.commons.lang3.StringUtils;
 import org.flywaydb.core.Flyway;
 import org.junit.After;
 import org.junit.Before;
@@ -119,6 +120,8 @@ public class PostgresStreamStoreTest {
     }
 
     // TODO: add a test for max count equal to Integer.MAX_VALUE
+    // TODO: add tests for unique constraint exception
+    // TODO: add tests for SqlException none unique constraint exception
 
     @Test
     public void readAllBackwardsTest() throws SQLException {
@@ -196,6 +199,19 @@ public class PostgresStreamStoreTest {
         assertEquals(1, page.getMessages().length);
     }
 
+    // When_append_stream_second_time_with_no_stream_expected_and_different_message_then_should_throw
+
+    @Test
+    public void When_append_stream_second_time_with_no_stream_expected_and_same_messages_then_should_then_should_be_idempotent() throws SQLException {
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, createNewStreamMessages(1, 2));
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, createNewStreamMessages(1, 2));
+
+        ReadStreamPage page = store.readStreamForwards("test", 0, 10, true);
+
+        assertNotNull(page);
+        assertEquals(PageReadStatus.SUCCESS, page.getStatus());
+        assertEquals(2, page.getMessages().length);
+    }
 
 //    @Test
 //    public void appendStreamIdempotent() throws SQLException {
@@ -298,5 +314,21 @@ public class PostgresStreamStoreTest {
     }
 
     // TODO: add test for expired messages
+
+
+
+    public static NewStreamMessage[] createNewStreamMessages(int... messageNumbers) {
+        return createNewStreamMessages("\"data\"", messageNumbers);
+    }
+
+    public static NewStreamMessage[] createNewStreamMessages(String jsonData, int[] messageNumbers) {
+        NewStreamMessage[] newMessages = new NewStreamMessage[messageNumbers.length];
+        for (int i = 0; i < messageNumbers.length; i++) {
+            UUID id = UUID.fromString(StringUtils.leftPad("00000000-0000-0000-0000-" + String.valueOf(messageNumbers[i]), 12, "0"));
+            newMessages[i] = new NewStreamMessage(id, "type", jsonData, "\"metadata\"");
+        }
+        return newMessages;
+    }
+
 
 }

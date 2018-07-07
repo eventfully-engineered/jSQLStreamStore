@@ -9,11 +9,27 @@ import java.util.UUID;
 
 public interface IStreamStore {
 
+    /**
+     *
+     * @param streamId
+     * @param expectedVersion
+     * @param message
+     * @return
+     * @throws SQLException
+     */
     AppendResult appendToStream(
         String streamId,
         int expectedVersion,
-        NewStreamMessage message);
+        NewStreamMessage message) throws SQLException;
 
+    /**
+     *
+     * @param streamId
+     * @param expectedVersion
+     * @param messages
+     * @return
+     * @throws SQLException
+     */
     AppendResult appendToStream(
         String streamId,
         int expectedVersion,

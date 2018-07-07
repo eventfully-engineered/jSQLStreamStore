@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AllStreamSubscriptionImpl implements AllStreamSubscription {
@@ -26,6 +28,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
     //private readonly CancellationTokenSource _disposed = new CancellationTokenSource();
     //private readonly AsyncAutoResetEvent _streamStoreNotification = new AsyncAutoResetEvent();
     //private readonly TaskCompletionSource<object> _started = new TaskCompletionSource<object>();
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private final AtomicBoolean _notificationRaised = new AtomicBoolean();
 
     private Long fromPosition;
@@ -60,6 +63,9 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
 //            });
 //
 //        Task.Run(PullAndPush);
+
+
+        EXECUTOR.execute(this::pullAndPush);
 
         LOG.info("AllStream subscription created {} continuing after position {}.",
             name, continueAfterPosition == null ? "<null>" : continueAfterPosition.toString());
