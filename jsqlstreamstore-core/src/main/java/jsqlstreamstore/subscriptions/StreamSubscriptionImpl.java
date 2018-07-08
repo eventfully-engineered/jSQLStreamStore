@@ -9,8 +9,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+// TODO: allow users to cancel subscription. Would need to return a disposable handle back to the user or perhaps close
+// is enough? Not sure I like the idea of exposing rxjava2's Disposable to the outside world
 public class StreamSubscriptionImpl implements StreamSubscription {
 
     /**
@@ -18,6 +22,8 @@ public class StreamSubscriptionImpl implements StreamSubscription {
      */
     public static final int DEFAULT_PAGE_SIZE = 10;
     private static final Logger LOG = LoggerFactory.getLogger("StreamSubscriptionImpl");
+    // TODO: allow this to be passed in?
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     private int _pageSize = DEFAULT_PAGE_SIZE;
     private int _nextVersion;
@@ -56,6 +62,9 @@ public class StreamSubscriptionImpl implements StreamSubscription {
         _hasCaughtUp = hasCaughtUp != null ? hasCaughtUp : __ -> {};
         this.name = Strings.isNullOrEmpty(name) ? UUID.randomUUID().toString() : name;
 
+        // This may be a tad hard with our current setup as obserableSource subscribe return is void
+        // need to use something that can return a Disposable?
+
 //        readonlyStreamStore.OnDispose += ReadonlyStreamStoreOnOnDispose;
 //        _notification = streamStoreAppendedNotification.Subscribe(_ =>
 //            {
@@ -67,7 +76,6 @@ public class StreamSubscriptionImpl implements StreamSubscription {
         LOG.info("Stream subscription created {} continuing after version {}.",
             name, continueAfterVersion == null ? "<null>" : continueAfterVersion.toString());
     }
-
 
     @Override
     public String getName() {
@@ -93,14 +101,12 @@ public class StreamSubscriptionImpl implements StreamSubscription {
         _pageSize = pageSize <= 0 ? 1 : pageSize;
     }
 
-
     // async task
-    private void PullAndPush()
-    {
+    private void pullAndPush() {
         if (_continueAfterVersion != null) {
             _nextVersion = 0;
         } else if (_continueAfterVersion == StreamVersion.END) {
-            Initialize();
+            initialize();
         } else {
             _nextVersion = _continueAfterVersion + 1;
         }
@@ -112,13 +118,12 @@ public class StreamSubscriptionImpl implements StreamSubscription {
             Boolean lastHasCaughtUp = null;
 
             while (!pause) {
-                ReadStreamPage page = Pull();
-
+                ReadStreamPage page = pull();
                 if (page.getStatus() != PageReadStatus.SUCCESS) {
                     break;
                 }
 
-                Push(page);
+                push(page);
 
                 if (lastHasCaughtUp != null || lastHasCaughtUp != page.isEnd()) {
                     // Only raise if the state changes
@@ -143,7 +148,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
     }
 
     // async task
-    private void Initialize() {
+    private void initialize() {
         ReadStreamPage eventsPage;
         try {
             // Get the last stream version and subscribe from there.
@@ -175,7 +180,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
     }
 
     // async task
-    private ReadStreamPage Pull() {
+    private ReadStreamPage pull() {
         ReadStreamPage readStreamPage;
         try {
             readStreamPage = _readonlyStreamStore.readStreamForwards(streamId, _nextVersion, getMaxCountPerRead(), _prefectchJsonData);
@@ -199,7 +204,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
     }
 
     // async task
-    private void Push(ReadStreamPage page) {
+    private void push(ReadStreamPage page) {
         for (StreamMessage message : page.getMessages()) {
 //            if (_disposed.IsCancellationRequested)
 //            {
@@ -236,6 +241,8 @@ public class StreamSubscriptionImpl implements StreamSubscription {
 
     @Override
     public void close() throws IOException {
+        // TODO: do i need to do any of these?
+
 //        if (_disposed.IsCancellationRequested)
 //        {
 //            return;

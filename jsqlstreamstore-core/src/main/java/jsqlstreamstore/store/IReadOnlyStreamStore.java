@@ -12,6 +12,8 @@ import java.sql.SQLException;
  * Represents a readonly stream store.
  *
  */
+// TODO: does this need to implement closeable or Disposable so that we can clean; specifically subscriptions?
+// or perhaps something like OnDispose
 public interface IReadOnlyStreamStore {
 
 

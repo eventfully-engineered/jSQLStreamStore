@@ -9,16 +9,22 @@ import jsqlstreamstore.streams.StreamMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-// TODO: allow users to cancel subscription. Would need to return a disposable handle back to the user
+// TODO: allow users to cancel subscription. Would need to return a disposable handle back to the user or perhaps close
+// is enough? Not sure I like the idea of exposing rxjava2's Disposable to the outside world
 public class AllStreamSubscriptionImpl implements AllStreamSubscription {
 
-    public static final int DEFAULT_PAGE_SIZE = 10;
     private static final Logger LOG = LoggerFactory.getLogger("AllStreamSubscriptionImpl");
+
+    public static final int DEFAULT_PAGE_SIZE = 10;
+    // TODO: allow this to be passed in?
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+
     private int _pageSize = DEFAULT_PAGE_SIZE;
     private long _nextPosition;
     private final IReadOnlyStreamStore _readonlyStreamStore;
@@ -31,8 +37,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
     //private readonly AsyncAutoResetEvent _streamStoreNotification = new AsyncAutoResetEvent();
     //private readonly TaskCompletionSource<object> _started = new TaskCompletionSource<object>();
 
-    // TODO: allow this to be passed in?
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+
     private final AtomicBoolean _notificationRaised = new AtomicBoolean();
 
     private Long fromPosition;
@@ -136,8 +141,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
     }
 
     // async task
-    private void initialize()
-    {
+    private void initialize() {
         ReadAllPage eventsPage;
         try {
             // Get the last stream version and subscribe from there.
@@ -223,5 +227,19 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
         } catch (Exception ex) {
             LOG.error("Error notifying subscriber that subscription has been dropped ({}).", name, ex);
         }
+    }
+
+    @Override
+    public void close() throws IOException {
+        // TODO: do i need to do any of these?
+
+//        if (_disposed.IsCancellationRequested)
+//        {
+//            return;
+//        }
+//        _disposed.Cancel();
+//        _notification.Dispose();
+
+        notifySubscriptionDropped(SubscriptionDroppedReason.DISPOSED, null);
     }
 }
