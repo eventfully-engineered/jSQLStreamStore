@@ -19,7 +19,7 @@ public class PollingStreamStoreNotifierTests {
         AtomicLong readHeadCount = new AtomicLong(0L);
         Supplier<Long> readHeadPosition = () -> {
             readHeadCount.incrementAndGet();
-            if(readHeadCount.get() % 2 == 0) {
+            if (readHeadCount.get() % 2 == 0) {
                 throw new RuntimeException("oops");
             }
             return readHeadCount.get();
@@ -46,6 +46,7 @@ public class PollingStreamStoreNotifierTests {
             @Override
             public void onComplete() {
             }
+
         });
 
         PollingStreamStoreNotifier notifier = new PollingStreamStoreNotifier(readHeadPosition, 10);

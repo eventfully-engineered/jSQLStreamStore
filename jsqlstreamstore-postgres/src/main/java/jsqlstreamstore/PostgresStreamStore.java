@@ -37,8 +37,8 @@ public class PostgresStreamStore extends StreamStoreBase {
 
         connectionFactory = settings.getConnectionFactory();
         jsonSerializerStrategy = settings.getJsonSerializerStrategy();
-        // TODO: fix
-        streamStoreNotifier = new PollingStreamStoreNotifier(this); //settings.getCreateStreamStoreNotifier().createStreamStoreNotifier(this);
+        // TODO: fix settings.getCreateStreamStoreNotifier().createStreamStoreNotifier(this);
+        streamStoreNotifier = new PollingStreamStoreNotifier(this);
         scripts = new Scripts(settings.getSchema());
     }
 
@@ -910,6 +910,5 @@ public class PostgresStreamStore extends StreamStoreBase {
             prefetchJsonData,
             name);
     }
-
 
 }
