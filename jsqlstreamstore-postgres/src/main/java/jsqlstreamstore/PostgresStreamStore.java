@@ -5,6 +5,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
+import io.reactivex.ObservableSource;
 import jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
 import jsqlstreamstore.store.ConnectionFactory;
 import jsqlstreamstore.store.StreamStoreBase;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 // TODO: double check data types: int vs Integer vs long vs Long
 public class PostgresStreamStore extends StreamStoreBase {
@@ -29,7 +31,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
     private final ConnectionFactory connectionFactory;
     private final Scripts scripts;
-    private final StreamStoreNotifier streamStoreNotifier;
+    private final Supplier<StreamStoreNotifier> streamStoreNotifier;
     private final JsonSerializerStrategy jsonSerializerStrategy;
 
     public PostgresStreamStore(PostgresStreamStoreSettings settings) {
@@ -37,8 +39,14 @@ public class PostgresStreamStore extends StreamStoreBase {
 
         connectionFactory = settings.getConnectionFactory();
         jsonSerializerStrategy = settings.getJsonSerializerStrategy();
-        // TODO: fix settings.getCreateStreamStoreNotifier().createStreamStoreNotifier(this);
-        streamStoreNotifier = new PollingStreamStoreNotifier(this);
+
+        streamStoreNotifier = () -> {
+            if (settings.getCreateStreamStoreNotifier() == null) {
+                throw new RuntimeException("Cannot create notifier because supplied createStreamStoreNotifier was null");
+            }
+            return settings.getCreateStreamStoreNotifier().createStreamStoreNotifier(this);
+        };
+
         scripts = new Scripts(settings.getSchema());
     }
 
@@ -883,7 +891,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                 streamId,
                 startVersion,
                 this,
-                //GetStoreObservable, TODO: fix
+                getStoreObservable(),
                 streamMessageReceived,
                 subscriptionDropped,
                 hasCaughtUp,
@@ -903,12 +911,19 @@ public class PostgresStreamStore extends StreamStoreBase {
         return new AllStreamSubscriptionImpl(
             fromPosition,
             this,
-            // GetStoreObservable, TODO: fix
+            getStoreObservable(),
             streamMessageReceived,
             subscriptionDropped,
             hasCaughtUp,
             prefetchJsonData,
             name);
+    }
+
+
+    //private IObservable<Unit> GetStoreObservable => _streamStoreNotifier.Value;
+    // TODO: I think we can just return StreamStoreNotifier here
+    private ObservableSource getStoreObservable() {
+        return streamStoreNotifier.get();
     }
 
 }

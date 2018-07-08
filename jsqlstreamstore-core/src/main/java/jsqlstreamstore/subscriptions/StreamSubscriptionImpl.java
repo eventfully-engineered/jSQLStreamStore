@@ -1,6 +1,7 @@
 package jsqlstreamstore.subscriptions;
 
 import com.google.common.base.Strings;
+import io.reactivex.ObservableSource;
 import jsqlstreamstore.store.IReadOnlyStreamStore;
 import jsqlstreamstore.streams.*;
 import org.slf4j.Logger;
@@ -40,7 +41,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
             String streamId,
             Integer continueAfterVersion,
             IReadOnlyStreamStore readonlyStreamStore,
-            //IObservable<Unit> streamStoreAppendedNotification,
+            ObservableSource streamStoreAppendedNotification,
             StreamMessageReceived streamMessageReceived,
             SubscriptionDropped subscriptionDropped,
             HasCaughtUp hasCaughtUp,
@@ -51,6 +52,8 @@ public class StreamSubscriptionImpl implements StreamSubscription {
         _readonlyStreamStore = readonlyStreamStore;
         _streamMessageReceived = streamMessageReceived;
         _prefectchJsonData = prefectchJsonData;
+
+        // TODO: make _subscriptionDropped and _hasCaughtUp optional?
         _subscriptionDropped = subscriptionDropped; // subscriptionDropped ?? ((_, __, ___) => { });
         _hasCaughtUp = hasCaughtUp; // hasCaughtUp ?? (_ => { });
         this.name = Strings.isNullOrEmpty(name) ? UUID.randomUUID().toString() : name;
@@ -122,7 +125,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
                 if (lastHasCaughtUp != null || lastHasCaughtUp != page.isEnd()) {
                     // Only raise if the state changes
                     lastHasCaughtUp = page.isEnd();
-//                    _hasCaughtUp(page.isEnd());
+                    _hasCaughtUp.hasCaughtUp(page.isEnd());
                 }
 
                 pause = page.isEnd() && page.getMessages().length == 0;
@@ -209,6 +212,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
             lastVersion = message.getStreamVersion();
             try {
 //                _streamMessageReceived(this, message);
+                _streamMessageReceived.get(this, message);
             } catch (Exception ex) {
                 LOG.error("Exception with subscriber receiving message {}/{} Message: {}.",
                     name, streamId, message, ex);
@@ -225,6 +229,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
         try {
             LOG.info("Subscription dropped {}/{}. Reason: {}", name, streamId, reason, exception);
 //            _subscriptionDropped.Invoke(this, reason, exception);
+            _subscriptionDropped.get(this, reason, exception);
         } catch(Exception ex) {
             LOG.error("Error notifying subscriber that subscription has been dropped ({}/{}).",
                 name, streamId, ex);

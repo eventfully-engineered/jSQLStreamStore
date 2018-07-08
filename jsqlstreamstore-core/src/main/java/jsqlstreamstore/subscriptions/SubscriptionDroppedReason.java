@@ -3,7 +3,7 @@ package jsqlstreamstore.subscriptions;
 public enum SubscriptionDroppedReason {
 
     /**
-     * The subscription was disposed deliberately. 
+     * The subscription was disposed deliberately.
      * The associated exception will be null.
      * You will not usually perform any actions as a result of this.
      */
@@ -21,5 +21,5 @@ public enum SubscriptionDroppedReason {
      * It is your responsibility to check the exception to determine whether it
      * is recoverable, and if so, recreate the subscription if desired.
      */
-    STREAM_STORE_ERROR;
+    STREAM_STORE_ERROR
 }

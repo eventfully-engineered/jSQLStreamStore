@@ -1,6 +1,7 @@
 package jsqlstreamstore.subscriptions;
 
 import com.google.common.base.Strings;
+import io.reactivex.ObservableSource;
 import jsqlstreamstore.store.IReadOnlyStreamStore;
 import jsqlstreamstore.streams.Position;
 import jsqlstreamstore.streams.ReadAllPage;
@@ -13,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+// TODO: allow users to cancel subscription. Would need to return a disposable handle back to the user
 public class AllStreamSubscriptionImpl implements AllStreamSubscription {
 
     public static final int DEFAULT_PAGE_SIZE = 10;
@@ -28,6 +30,8 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
     //private readonly CancellationTokenSource _disposed = new CancellationTokenSource();
     //private readonly AsyncAutoResetEvent _streamStoreNotification = new AsyncAutoResetEvent();
     //private readonly TaskCompletionSource<object> _started = new TaskCompletionSource<object>();
+
+    // TODO: allow this to be passed in?
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private final AtomicBoolean _notificationRaised = new AtomicBoolean();
 
@@ -38,7 +42,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
     public AllStreamSubscriptionImpl(
             Long continueAfterPosition,
             IReadOnlyStreamStore readonlyStreamStore,
-            //IObservable<Unit> streamStoreAppendedNotification,
+            ObservableSource streamStoreAppendedNotification,
             AllStreamMessageReceived streamMessageReceived,
             AllSubscriptionDropped subscriptionDropped,
             HasCaughtUp hasCaughtUp,
@@ -51,6 +55,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
         _readonlyStreamStore = readonlyStreamStore;
         _streamMessageReceived = streamMessageReceived;
         _prefetchJsonData = prefetchJsonData;
+        // TODO: make _subscriptionDropped and _hasCaughtUp optional?
         _subscriptionDropped = subscriptionDropped; // subscriptionDropped ?? ((_, __, ___) => { });
         _hasCaughtUp = hasCaughtUp; // hasCaughtUp ?? (_ => { });
         this.name = Strings.isNullOrEmpty(name) ? UUID.randomUUID().toString() : name;
@@ -62,9 +67,11 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
 //                _streamStoreNotification.Set();
 //            });
 //
+//        streamStoreAppendedNotification.subscribe();
+
+
+
 //        Task.Run(PullAndPush);
-
-
         EXECUTOR.execute(this::pullAndPush);
 
         LOG.info("AllStream subscription created {} continuing after position {}.",
@@ -110,7 +117,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
                 if ((lastHasCaughtUp == null || lastHasCaughtUp != page.isEnd()) && page.getMessages().length > 0) {
                     // Only raise if the state changes and there were messages read
                     lastHasCaughtUp = page.isEnd();
-                    //_hasCaughtUp(page.isEnd());
+                    _hasCaughtUp.hasCaughtUp(page.isEnd());
                 }
 
                 pause = page.isEnd() && page.getMessages().length == 0;
@@ -197,6 +204,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
             lastPosition = message.getPosition();
             try {
                 //_streamMessageReceived(this, message);
+                _streamMessageReceived.get(this, message);
             } catch (Exception ex) {
                 LOG.error("Exception with subscriber receiving message {} Message: {}.", name, message, ex);
                 notifySubscriptionDropped(SubscriptionDroppedReason.SUBSCRIBER_ERROR, ex);
@@ -212,6 +220,7 @@ public class AllStreamSubscriptionImpl implements AllStreamSubscription {
         try {
             LOG.info("All stream subscription dropped {}. Reason: {}", name, reason, exception);
             // _subscriptionDropped.Invoke(this, reason, exception);
+            _subscriptionDropped.get(this, reason, exception);
         } catch (Exception ex) {
             LOG.error("Error notifying subscriber that subscription has been dropped ({}).", name, ex);
         }

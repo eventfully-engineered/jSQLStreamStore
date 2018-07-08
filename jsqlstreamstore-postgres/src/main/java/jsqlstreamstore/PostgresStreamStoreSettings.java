@@ -3,6 +3,7 @@ package jsqlstreamstore;
 import jsqlstreamstore.infrastructure.Ensure;
 import jsqlstreamstore.infrastructure.serialization.JacksonSerializer;
 import jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
+import jsqlstreamstore.subscriptions.PollingStreamStoreNotifier;
 import org.joda.time.Period;
 import jsqlstreamstore.store.ConnectionFactory;
 import jsqlstreamstore.subscriptions.CreateStreamStoreNotifier;
@@ -18,12 +19,12 @@ public class PostgresStreamStoreSettings {
     private static final JsonSerializerStrategy DEFAULT_JSON_SERIALIZER_STRATEGY = JacksonSerializer.DEFAULT;
     private static final Period DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE = Period.minutes(1);
     private static final int DEFAULT_METADATA_MAX_AGE_CACHE_MAX_SIZE = 10000;
-    //private static final CreateStreamStoreNotifier DEFAULT_CREATE_STREAM_STORE_NOTIFIER = new PollingStreamStoreNotifier();
+    private static final CreateStreamStoreNotifier DEFAULT_CREATE_STREAM_STORE_NOTIFIER = store -> new PollingStreamStoreNotifier(store);
 
     private String schema = DEFAULT_SCHEMA;
     private ConnectionFactory connectionFactory;
     private JsonSerializerStrategy jsonSerializerStrategy = DEFAULT_JSON_SERIALIZER_STRATEGY;
-    private CreateStreamStoreNotifier createStreamStoreNotifier;
+    private CreateStreamStoreNotifier createStreamStoreNotifier = DEFAULT_CREATE_STREAM_STORE_NOTIFIER;
     private Period metadataMaxAgeCacheExpire = DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE;
     private int metadataMaxAgeCacheMaxSize = DEFAULT_METADATA_MAX_AGE_CACHE_MAX_SIZE;
 

@@ -2,7 +2,7 @@ package jsqlstreamstore.store;
 
 import jsqlstreamstore.streams.ReadAllPage;
 import jsqlstreamstore.streams.ReadStreamPage;
-import jsqlstreamstore.streams.StreamMessageReceived;
+import jsqlstreamstore.subscriptions.StreamMessageReceived;
 import jsqlstreamstore.streams.StreamMetadataResult;
 import jsqlstreamstore.subscriptions.*;
 
