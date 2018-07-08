@@ -52,10 +52,8 @@ public class StreamSubscriptionImpl implements StreamSubscription {
         _readonlyStreamStore = readonlyStreamStore;
         _streamMessageReceived = streamMessageReceived;
         _prefectchJsonData = prefectchJsonData;
-
-        // TODO: make _subscriptionDropped and _hasCaughtUp optional?
-        _subscriptionDropped = subscriptionDropped; // subscriptionDropped ?? ((_, __, ___) => { });
-        _hasCaughtUp = hasCaughtUp; // hasCaughtUp ?? (_ => { });
+        _subscriptionDropped = subscriptionDropped != null ? subscriptionDropped : (__, ___, ____) -> {};
+        _hasCaughtUp = hasCaughtUp != null ? hasCaughtUp : __ -> {};
         this.name = Strings.isNullOrEmpty(name) ? UUID.randomUUID().toString() : name;
 
 //        readonlyStreamStore.OnDispose += ReadonlyStreamStoreOnOnDispose;
