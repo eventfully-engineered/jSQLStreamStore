@@ -25,7 +25,7 @@ public class Scripts {
     }
 
     public String getAppendStreamExpectedVersion() {
-        return getScript("AppenStreamExpectedVersion");
+        return getScript("AppendStreamExpectedVersion");
     }
 
     public String getAppendStreamExpectedVersionNoStream() {
