@@ -3,7 +3,7 @@ DECLARE
 	v_streamIdInternal integer;
 	v_metadataStreamId varchar(42);
 	v_metadataStreamIdInternal integer;
-	lastestStreamVersion integer;
+	latestStreamVersion integer;
 	latestStreamPosition bigint;
 	message NewMessage;
 	currentVersion integer;
@@ -15,20 +15,29 @@ BEGIN
 	IF NOT EXISTS (SELECT * FROM public.Streams WHERE public.Streams.Id = streamId) THEN
 		INSERT INTO public.Streams (Id, IdOriginal) VALUES (streamId, streamIdOriginal);
 	END IF;
-	
-	-- lock?
-	SELECT public.Streams.IdInternal, public.Streams."Version" into
-			v_streamIdInternal, lastestStreamVersion
+
+	-- lock? such as from eventide
+	-- stream_name_hash = hash_64(_stream_name);
+    -- PERFORM pg_advisory_xact_lock(stream_name_hash);
+	SELECT public.Streams.IdInternal, public.Streams."Version", public.Streams."Position"
+	into v_streamIdInternal, latestStreamVersion, latestStreamPosition
     FROM public.Streams
     WHERE public.Streams.Id = streamId;
-    
+
+    -- https://stackoverflow.com/questions/2944297/postgresql-function-for-last-inserted-id
 	foreach message in ARRAY newMessages
 	loop
 		INSERT INTO public.Messages (StreamIdInternal, Id, StreamVersion, Created, Type, JsonData, JsonMetadata)
-		SELECT v_streamIdInternal, message.*;
+		SELECT v_streamIdInternal, message.Id, message.StreamVersion + latestStreamVersion + 1, message.Created, message.Type, message.JsonData, message.JsonMetadata;
 	end loop;
-	
-	SELECT StreamVersion, Position into lastestStreamVersion
+
+
+
+    -- TODO: may need to fix this
+    -- SELECT @latestStreamVersion = MAX(StreamVersion) + @latestStreamVersion + 1
+    -- FROM @newMessages
+    -- SET @latestStreamVersion = @latestStreamVersion
+	SELECT StreamVersion, Position into latestStreamVersion
 	FROM public.Messages
 	WHERE public.Messages.StreamIDInternal = v_streamIdInternal
 	ORDER BY public.Messages.Position DESC
@@ -39,10 +48,10 @@ BEGIN
 	END IF;
 
 	UPDATE public.Streams
-	SET "Version" = lastestStreamVersion, "Position" = latestStreamPosition
+	SET "Version" = latestStreamVersion, "Position" = latestStreamPosition
 	WHERE public.Streams.IdInternal = v_streamIdInternal;
 
-	SELECT lastestStreamVersion, latestStreamPosition into currentVersion, currentPosition;
+	SELECT latestStreamVersion, latestStreamPosition into currentVersion, currentPosition;
 	
 	v_metadataStreamId := '\\$\\$' || streamId;		
 	
