@@ -17,3 +17,12 @@ hs_err_pid*
 *.iws
 *.ipr
 .idea/
+
+# Eclipse
+.classpath
+.project
+.settings/
+.metadata/
+
+# OS X
+.DS_Store
