@@ -8,9 +8,33 @@
     <artifactId>jsqlstreamstore-parent</artifactId>
     <packaging>pom</packaging>
     <version>0.0.1-SNAPSHOT</version>
-
     <name>jSQLstreamstore</name>
     <description>A Java stream store library specifically targeting SQL based implementations.</description>
+
+    <modules>
+        <module>jsqlstreamstore-core</module>
+        <module>jsqlstreamstore-postgres</module>
+        <module>jsqlstreamstore-mssql</module>
+        <module>jsqlstreamstore-oracle</module>
+        <module>jsqlstreamstore-bom</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <assertj.version>3.10.0</assertj.version>
+        <junit.version>5.3.1</junit.version>
+        <mockito.version>2.23.0</mockito.version>
+    </properties>
+
+    <developers>
+        <developer>
+            <id>seancarroll</id>
+            <name>Sean Carroll</name>
+        </developer>
+    </developers>
 
     <scm>
         <connection>scm:git:git://github.com/seancarroll/jSQLStreamStore.git</connection>
@@ -21,25 +45,29 @@
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/seancarroll/jSqlStreamStore/issues</url>
+        <url>https://github.com/seancarroll/jSQLStreamStore/issues</url>
     </issueManagement>
 
-    <developers>
-        <developer>
-            <id>seancarroll</id>
-            <name>Sean Carroll</name>
-        </developer>
-    </developers>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-
-        <junit.version>5.3.1</junit.version>
-        <mockito.version>2.23.0</mockito.version>
-    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <profiles>
         <profile>
@@ -69,42 +97,6 @@
             </build>
         </profile>
     </profiles>
-
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-api</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-
-            <dependency>
-                <groupId>org.mockito</groupId>
-                <artifactId>mockito-core</artifactId>
-                <version>${mockito.version}</version>
-                <scope>test</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-
-    <dependencies>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <version>${junit.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>${mockito.version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 
     <build>
         <pluginManagement>
@@ -185,12 +177,12 @@
                 <plugin>
                     <groupId>org.owasp</groupId>
                     <artifactId>dependency-check-maven</artifactId>
-                    <version>3.3.1</version>
+                    <version>3.3.2</version>
                 </plugin>
                 <plugin>
                     <groupId>com.github.spotbugs</groupId>
                     <artifactId>spotbugs-maven-plugin</artifactId>
-                    <version>3.1.6</version>
+                    <version>3.1.7</version>
                 </plugin>
                 <!--TODO: do we use this?-->
                 <plugin>
@@ -228,8 +220,9 @@
                                         <exclude>org.slf4j:slf4j-log4j12</exclude>
                                         <!-- This should not exist as it will force SLF4J calls to be delegated to jul -->
                                         <exclude>org.slf4j:slf4j-jdk14</exclude>
-                                        <!-- Ensure only the slf4j binding for logback is on the classpath -->
+                                        <!-- Ensure only the slf4j is on the classpath -->
                                         <exclude>log4j:log4j</exclude>
+                                        <exclude>ch.qos.logback:logback-classic</exclude>
                                         <!-- As recommended from the slf4j guide, exclude commons-logging -->
                                         <exclude>commons-logging:commons-logging</exclude>
                                     </excludes>
@@ -335,8 +328,11 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+            </plugin>
         </plugins>
-
     </build>
 
     <reporting>
@@ -385,13 +381,5 @@
             </plugin>
         </plugins>
     </reporting>
-
-    <modules>
-        <module>jsqlstreamstore-core</module>
-        <module>jsqlstreamstore-postgres</module>
-        <module>jsqlstreamstore-mssql</module>
-        <module>jsqlstreamstore-oracle</module>
-        <module>jsqlstreamstore-bom</module>
-    </modules>
 
 </project>
