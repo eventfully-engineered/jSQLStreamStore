@@ -1,6 +1,9 @@
 package jsqlstreamstore.streams;
 
 import com.google.common.base.MoreObjects;
+import jsqlstreamstore.infrastructure.Empty;
+
+import java.sql.SQLException;
 
 /**
  * From SqlStreamStore
@@ -113,7 +116,7 @@ public class ReadStreamPage {
         this.nextStreamVersion = nextStreamVersion;
         this.readDirection = readDirection;
         this.isEnd = isEnd;
-        this.messages = messages == null ? new StreamMessage[0] : messages;
+        this.messages = messages == null ? Empty.STREAM_MESSAGE : messages;
         this.readNext = readNext;
     }
 
@@ -153,8 +156,8 @@ public class ReadStreamPage {
         return isEnd;
     }
 
-    public ReadNextStreamPage getNext() {
-        return readNext;
+    public ReadStreamPage readNext() throws SQLException {
+        return readNext.get(nextStreamVersion);
     }
 
     @Override
