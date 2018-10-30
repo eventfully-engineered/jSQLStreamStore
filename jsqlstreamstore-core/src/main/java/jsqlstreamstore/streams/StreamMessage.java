@@ -16,16 +16,26 @@ public class StreamMessage {
     private final String streamId;
     private final String type;
     private final GetJsonData getJsonData;
-    
-    public StreamMessage (
-            String streamId,
-            UUID messageId,
-            int streamVersion,
-            long position,
-            DateTime createdUtc,
-            String type,
-            String jsonMetadata,
-            GetJsonData getJsonData) {
+
+    /**
+     *
+     * @param streamId
+     * @param messageId
+     * @param streamVersion
+     * @param position
+     * @param createdUtc
+     * @param type
+     * @param jsonMetadata
+     * @param getJsonData
+     */
+    public StreamMessage(String streamId,
+                         UUID messageId,
+                         int streamVersion,
+                         long position,
+                         DateTime createdUtc,
+                         String type,
+                         String jsonMetadata,
+                         GetJsonData getJsonData) {
         this.streamId = streamId;
         this.messageId = messageId;
         this.streamVersion = streamVersion;

@@ -17,10 +17,9 @@ public interface IStreamStore {
      * @return
      * @throws SQLException
      */
-    AppendResult appendToStream(
-        String streamId,
-        int expectedVersion,
-        NewStreamMessage message) throws SQLException;
+    AppendResult appendToStream(String streamId,
+                                int expectedVersion,
+                                NewStreamMessage message) throws SQLException;
 
     /**
      *
@@ -30,10 +29,9 @@ public interface IStreamStore {
      * @return
      * @throws SQLException
      */
-    AppendResult appendToStream(
-        String streamId,
-        int expectedVersion,
-        NewStreamMessage[] messages) throws SQLException;
+    AppendResult appendToStream(String streamId,
+                                int expectedVersion,
+                                NewStreamMessage[] messages) throws SQLException;
 
 
 	/**
@@ -65,16 +63,17 @@ public interface IStreamStore {
     //        int expectedVersion,
     //        EventRecord[] messages);
 
+    // TODO: fix javadoc
 	/**
 	 * Hard deletes a stream and all of its messages. Deleting a stream will result in a '$stream-deleted'
-     * message being appended to the '$deleted' stream. See <see cref="Deleted.StreamDeleted"/> for the
+     * message being appended to the '$deleted' stream. See {@Deleted.StreamDeleted} for the
      * message structure.
 	 * @param streamId The stream Id to delete.
 	 * @param expectedVersion The stream expected version. See ExpectedVersion for const values.
 	 */
 	void deleteStream(String streamId, int expectedVersion /*= ExpectedVersion.Any*/) throws SQLException;
 
-	// delete event -- do we want to support?
+	// TODO: delete event -- do we want to support?
 	/**
 	 * Hard deletes a message from the stream. Deleting a message will result in a '$message-deleted'
      * message being appended to the '$deleted' stream. See <see cref="Deleted.MessageDeleted"/> for the
@@ -94,10 +93,9 @@ public interface IStreamStore {
      * @param maxCount The max count of messages in the stream.
      * @param metadataJson Custom meta data to associate with the stream.
 	 */
-	SetStreamMetadataResult setStreamMetadata(
-        String streamId,
-        int expectedStreamMetadataVersion, // = ExpectedVersion.Any,
-        Integer maxAge,
-        Integer maxCount,
-        String metadataJson) throws SQLException;
+    SetStreamMetadataResult setStreamMetadata(String streamId,
+                                              int expectedStreamMetadataVersion, // = ExpectedVersion.Any,
+                                              Integer maxAge,
+                                              Integer maxCount,
+                                              String metadataJson) throws SQLException;
 }

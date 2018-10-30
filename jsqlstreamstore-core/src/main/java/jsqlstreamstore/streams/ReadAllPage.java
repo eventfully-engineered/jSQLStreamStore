@@ -1,6 +1,7 @@
 package jsqlstreamstore.streams;
 
 import com.google.common.base.MoreObjects;
+import jsqlstreamstore.infrastructure.Empty;
 
 import java.sql.SQLException;
 
@@ -56,20 +57,18 @@ public class ReadAllPage {
      * @param readDirection The direction of the the read request.
      * @param messages The collection messages read.
      */
-    public ReadAllPage(
-        long fromPosition,
-        long nextPosition,
-        boolean isEnd,
-        ReadDirection readDirection,
-        ReadNextAllPage readNext,
-        StreamMessage[] messages) {
+    public ReadAllPage(long fromPosition,
+                       long nextPosition,
+                       boolean isEnd,
+                       ReadDirection readDirection,
+                       ReadNextAllPage readNext,
+                       StreamMessage[] messages) {
         this.fromPosition = fromPosition;
         this.nextPosition = nextPosition;
         this.isEnd = isEnd;
         this.readDirection = readDirection;
         this.readNext = readNext;
-        // TODO: use empty constant?
-        this.messages = messages == null ? new StreamMessage[0] : messages;
+        this.messages = messages == null ? Empty.STREAM_MESSAGE : messages;
     }
 
     /**
@@ -80,7 +79,6 @@ public class ReadAllPage {
     public ReadAllPage readNext() throws SQLException {
         return readNext.get(nextPosition);
     }
-
 
     public long getFromPosition() {
         return fromPosition;

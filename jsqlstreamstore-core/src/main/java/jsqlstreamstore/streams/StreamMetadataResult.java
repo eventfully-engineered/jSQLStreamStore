@@ -41,18 +41,17 @@ public class StreamMetadataResult {
 	 * @param maxCount The max count of message in the stream
 	 * @param metadataJson Custom metadata serialized as JSON
 	 */
-    public StreamMetadataResult(
-            String streamId,
-            int metadataStreamVersion,
-            Integer maxAge,
-            Integer maxCount,
-            String metadataJson) {
-            this.streamId = streamId;
-            this.metadataStreamVersion = metadataStreamVersion;
-            this.maxAge = maxAge;
-            this.maxCount = maxCount;
-            this.metadataJson = metadataJson;
-        }
+    public StreamMetadataResult(String streamId,
+                                int metadataStreamVersion,
+                                Integer maxAge,
+                                Integer maxCount,
+                                String metadataJson) {
+        this.streamId = streamId;
+        this.metadataStreamVersion = metadataStreamVersion;
+        this.maxAge = maxAge;
+        this.maxCount = maxCount;
+        this.metadataJson = metadataJson;
+    }
 
     public String getStreamId() {
         return streamId;

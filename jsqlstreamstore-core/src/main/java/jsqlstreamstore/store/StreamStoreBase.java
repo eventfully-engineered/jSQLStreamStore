@@ -30,9 +30,8 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 
     protected final Logger logger = LoggerFactory.getLogger(StreamStoreBase.class);
 
-    protected StreamStoreBase(
-            Period metadataMaxAgeCacheExpiry,
-            int metadataMaxAgeCacheMaxSize) {
+    protected StreamStoreBase(Period metadataMaxAgeCacheExpiry,
+                              int metadataMaxAgeCacheMaxSize) {
         super(metadataMaxAgeCacheExpiry, metadataMaxAgeCacheMaxSize);
     }
 
@@ -145,17 +144,16 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
     }
 
     protected abstract AppendResult appendToStreamInternal(String streamId, int expectedVersion,
-            NewStreamMessage[] messages) throws SQLException;
+                                                           NewStreamMessage[] messages) throws SQLException;
 
     protected abstract void deleteStreamInternal(String streamId, int expectedVersion) throws SQLException;
 
     protected abstract void deleteMessageInternal(String streamId, UUID messageId) throws SQLException;
 
-    protected abstract SetStreamMetadataResult setStreamMetadataInternal(
-            String streamId,
-            int expectedStreamMetadataVersion,
-            Integer maxAge,
-            Integer maxCount,
-            String metadataJson) throws SQLException;
+    protected abstract SetStreamMetadataResult setStreamMetadataInternal(String streamId,
+                                                                         int expectedStreamMetadataVersion,
+                                                                         Integer maxAge,
+                                                                         Integer maxCount,
+                                                                         String metadataJson) throws SQLException;
 
 }
