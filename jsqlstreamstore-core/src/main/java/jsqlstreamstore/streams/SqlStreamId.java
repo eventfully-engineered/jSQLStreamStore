@@ -15,14 +15,15 @@ public class SqlStreamId {
     
     private final String id;
     private final String originalId;
-    
+
     public SqlStreamId(String originalId) {
         this.originalId = Preconditions.checkNotNull(originalId);
-        
-        id = Utils.isUUID(originalId) 
-                ? originalId
-                : new String(Hashing.murmur3_128().hashString(originalId, StandardCharsets.UTF_8).asBytes(), StandardCharsets.UTF_8)
-                    .replaceAll("-", "");
+
+        id = Utils.isUUID(originalId)
+            ? originalId
+            // TODO: can we just to .toString()?
+            : Hashing.murmur3_128().hashString(originalId, StandardCharsets.UTF_8).toString()
+            .replaceAll("-", "");
     }
     
     private SqlStreamId(String originalId, String id) {
@@ -49,9 +50,9 @@ public class SqlStreamId {
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)
-                .add("id", getId())
-                .add("originalId", getOriginalId())
-                .toString();
+            .add("id", getId())
+            .add("originalId", getOriginalId())
+            .toString();
     }
     
 }
