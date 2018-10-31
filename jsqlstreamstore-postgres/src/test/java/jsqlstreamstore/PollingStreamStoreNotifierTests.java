@@ -3,14 +3,17 @@ package jsqlstreamstore;
 import io.reactivex.Observer;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.observers.TestObserver;
+import io.reactivex.schedulers.TestScheduler;
 import jsqlstreamstore.subscriptions.PollingStreamStoreNotifier;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 
 public class PollingStreamStoreNotifierTests {
 
@@ -49,8 +52,12 @@ public class PollingStreamStoreNotifierTests {
 
         });
 
+        // TODO: revisit. Not sure if this is the best way to do this but it works for now
+        TestScheduler ts = new TestScheduler();
         PollingStreamStoreNotifier notifier = new PollingStreamStoreNotifier(readHeadPosition, 10);
         notifier.subscribe(to);
+
+        ts.advanceTimeBy(9, TimeUnit.MILLISECONDS);
 
         to.assertSubscribed();
         to.awaitCount(5);

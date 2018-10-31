@@ -1,29 +1,30 @@
 package jsqlstreamstore;
 
 import com.fasterxml.uuid.Generators;
+import jsqlstreamstore.streams.*;
 import org.apache.commons.lang3.StringUtils;
 import org.flywaydb.core.Flyway;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
-import jsqlstreamstore.streams.*;
+import ru.yandex.qatools.embed.postgresql.PostgresProcess;
 
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.UUID;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static ru.yandex.qatools.embed.postgresql.EmbeddedPostgres.cachedRuntimeConfig;
 
 
-public class PostgresStreamStoreTest {
+class PostgresStreamStoreTest {
 
     private EmbeddedPostgres postgres;
     private PostgresStreamStore store;
 
-    @Before
-    public void setUp() throws Exception {
+    @BeforeAll
+    void setUp() throws Exception {
         postgres = new EmbeddedPostgres();
         String url = postgres.start(cachedRuntimeConfig(Paths.get(System.getProperty("java.io.tmpdir"), "pgembed")));
 
@@ -31,28 +32,26 @@ public class PostgresStreamStoreTest {
 
         store = new PostgresStreamStore(settings);
 
-        Flyway flyway = new Flyway();
-        flyway.setDataSource(url, EmbeddedPostgres.DEFAULT_USER, EmbeddedPostgres.DEFAULT_PASSWORD);
-        flyway.setLocations("classpath:db/migrations");
+        Flyway flyway = Flyway.configure()
+            .dataSource(url, EmbeddedPostgres.DEFAULT_USER, EmbeddedPostgres.DEFAULT_PASSWORD)
+            .locations("classpath:db/migrations")
+            .load();
         flyway.migrate();
     }
 
-    @After
-    public void tearDown() throws Exception {
-        if (postgres != null && postgres.getProcess().isPresent()) {
-            postgres.stop();
-        }
-        // postgres.getProcess().ifPresent(PostgresProcess::stop);
+    @AfterAll
+    void tearDown() {
+        postgres.getProcess().ifPresent(PostgresProcess::stop);
     }
 
     @Test
-    public void readAllForwardTest() throws SQLException {
+    void readAllForwardTest() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
             "{\"name\":\"Sean\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[]{newMessage});
 
         ReadAllPage all = store.readAllForwards(0, 10, true);
 
@@ -63,13 +62,13 @@ public class PostgresStreamStoreTest {
     }
 
     @Test
-    public void readStreamForwards() throws SQLException {
+    void readStreamForwards() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
             "{\"name\":\"Sean\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
 
         ReadStreamPage page = store.readStreamForwards("test", 0, 10, false);
 
@@ -80,13 +79,13 @@ public class PostgresStreamStoreTest {
     }
 
     @Test
-    public void readStreamForwardsEqualToCount() throws SQLException {
+    void readStreamForwardsEqualToCount() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
             "{\"name\":\"Sean\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
 
         ReadStreamPage page = store.readStreamForwards("test", 0, 1, false);
 
@@ -97,7 +96,7 @@ public class PostgresStreamStoreTest {
     }
 
     @Test
-    public void readAllForwardNext() throws SQLException {
+    void readAllForwardNext() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
@@ -108,7 +107,7 @@ public class PostgresStreamStoreTest {
             "someType",
             "{\"name\":\"Shawn\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage, newMessageToo});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage, newMessageToo});
 
         ReadAllPage page = store.readAllForwards(0, 1, false);
         assertEquals(1, page.getMessages().length);
@@ -122,15 +121,16 @@ public class PostgresStreamStoreTest {
     // TODO: add a test for max count equal to Integer.MAX_VALUE
     // TODO: add tests for unique constraint exception
     // TODO: add tests for SqlException none unique constraint exception
+    // TODO: add test for read stream next page
 
     @Test
-    public void readAllBackwardsTest() throws SQLException {
+    void readAllBackwardsTest() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
             "{\"name\":\"Sean\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
 
         ReadAllPage all = store.readAllBackwards(Position.END, 10, false);
 
@@ -142,7 +142,7 @@ public class PostgresStreamStoreTest {
 
 
     @Test
-    public void readStreamBackwards() throws SQLException, InterruptedException {
+    void readStreamBackwards() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
@@ -153,7 +153,7 @@ public class PostgresStreamStoreTest {
             "someType",
             "{\"name\":\"Shawn\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage, newMessageToo});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage, newMessageToo});
 
         ReadStreamPage page = store.readStreamBackwards("test", StreamVersion.END, 1, false);
 
@@ -164,13 +164,13 @@ public class PostgresStreamStoreTest {
     }
 
     @Test
-    public void appendStreamExpectedVersionNoStream() throws SQLException {
+    void appendStreamExpectedVersionNoStream() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
             "{\"name\":\"Sean\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
         ReadStreamPage page = store.readStreamForwards("test", 0, 1, true);
         ReadStreamPage pageBackwards = store.readStreamBackwards("test", StreamVersion.END, 1, true);
         ReadAllPage allPage = store.readAllForwards(0, 10, true);
@@ -184,25 +184,19 @@ public class PostgresStreamStoreTest {
     }
 
     @Test
-    public void appendStreamExpectedVersionAny() throws SQLException {
-        NewStreamMessage newMessage = new NewStreamMessage(
-            Generators.timeBasedGenerator().generate(),
-            "someType",
-            "{\"name\":\"Sean\"}");
-
-        AppendResult result = store.appendToStream("test", ExpectedVersion.ANY, new NewStreamMessage[] {newMessage});
-
-        ReadStreamPage page = store.readStreamForwards("test", 0, 1, true);
+    void appendStreamExpectedVersionAny() throws SQLException {
+        store.appendToStream("test", ExpectedVersion.ANY, createNewStreamMessages(1, 2));
+        ReadStreamPage page = store.readStreamForwards("test", 0, 2, true);
 
         assertNotNull(page);
         assertEquals(PageReadStatus.SUCCESS, page.getStatus());
-        assertEquals(1, page.getMessages().length);
+        assertEquals(2, page.getMessages().length);
     }
 
-    // When_append_stream_second_time_with_no_stream_expected_and_different_message_then_should_throw
+    // TODO: When_append_stream_second_time_with_no_stream_expected_and_different_message_then_should_throw
 
     @Test
-    public void When_append_stream_second_time_with_no_stream_expected_and_same_messages_then_should_then_should_be_idempotent() throws SQLException {
+    void When_append_stream_second_time_with_no_stream_expected_and_same_messages_then_should_then_should_be_idempotent() throws SQLException {
         store.appendToStream("test", ExpectedVersion.NO_STREAM, createNewStreamMessages(1, 2));
         store.appendToStream("test", ExpectedVersion.NO_STREAM, createNewStreamMessages(1, 2));
 
@@ -276,14 +270,18 @@ public class PostgresStreamStoreTest {
 //    }
 
 
+    // TODO: add tests for appendStreamExpectedVersion
+    // TODO: we are also missing the sql script for appendStreamExpectedVersion
+    // TODO: we also have AppendStreamAnyVersion and AppendStreamExpectedVersionAny which feel like the same thing to me
+
     @Test
-    public void deleteStream() throws SQLException {
+    void deleteStream() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
             "{\"name\":\"Sean\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
 
         store.deleteStream("test", ExpectedVersion.ANY);
 
@@ -292,7 +290,7 @@ public class PostgresStreamStoreTest {
     }
 
     @Test
-    public void deleteMessage() throws SQLException {
+    void deleteMessage() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
@@ -303,7 +301,7 @@ public class PostgresStreamStoreTest {
             "someType",
             "{\"name\":\"Shawn\"}");
 
-        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage, newMessageToo});
+        store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage, newMessageToo});
 
         store.deleteMessage("test", newMessage.getMessageId());
 
