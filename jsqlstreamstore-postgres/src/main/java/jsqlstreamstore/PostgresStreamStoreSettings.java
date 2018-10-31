@@ -46,7 +46,7 @@ public class PostgresStreamStoreSettings {
         return connectionFactory;
     }
 
-    public void setJsonSerializerStrategoy(JsonSerializerStrategy strategy) {
+    public void setJsonSerializerStrategy(JsonSerializerStrategy strategy) {
         Ensure.notNull(strategy);
         this.jsonSerializerStrategy = strategy;
     }
@@ -84,7 +84,7 @@ public class PostgresStreamStoreSettings {
         private ConnectionFactory connectionFactory;
         private String schema = DEFAULT_SCHEMA;
         private JsonSerializerStrategy jsonSerializerStrategy = DEFAULT_JSON_SERIALIZER_STRATEGY;
-        private CreateStreamStoreNotifier createStreamStoreNotifier;
+        private CreateStreamStoreNotifier createStreamStoreNotifier = DEFAULT_CREATE_STREAM_STORE_NOTIFIER;
         private Period metadataMaxAgeCacheExpire = DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE;
         private int metadataMaxAgeCacheMaxSize = DEFAULT_METADATA_MAX_AGE_CACHE_MAX_SIZE;
 
@@ -142,7 +142,7 @@ public class PostgresStreamStoreSettings {
             PostgresStreamStoreSettings settings = new PostgresStreamStoreSettings();
             settings.setConnectionFactory(connectionFactory);
             settings.setCreateStreamStoreNotifier(createStreamStoreNotifier);
-            settings.setJsonSerializerStrategoy(jsonSerializerStrategy);
+            settings.setJsonSerializerStrategy(jsonSerializerStrategy);
             settings.setMetadataMaxAgeCacheExpire(metadataMaxAgeCacheExpire);
             settings.setMetadataMaxAgeCacheMaxSize(metadataMaxAgeCacheMaxSize);
             settings.setSchema(schema);
