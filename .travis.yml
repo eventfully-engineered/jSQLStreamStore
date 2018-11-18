@@ -1,0 +1,29 @@
+language: java
+jdk:
+- openjdk8
+
+cache:
+    directories:
+    - $HOME/.m2
+
+services:
+- docker
+
+before_script:
+- curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+- chmod +x ./cc-test-reporter
+- ./cc-test-reporter before-build
+
+script: mvn verify -P code-coverage
+
+after_script:
+- ./cc-test-reporter format-coverage -d -t jacoco ./target/site/jacoco/jacoco.xml
+- ./cc-test-reporter upload-coverage -d
+
+
+after_success:
+- bash <(curl -s https://codecov.io/bash)
+#  - snyk monitor
+
+
+
