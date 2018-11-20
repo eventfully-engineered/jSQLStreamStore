@@ -48,7 +48,7 @@
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
         <maven-surefire-plugin.version>2.22.1</maven-surefire-plugin.version>
         <sonar-maven-plugin.version>3.5.0.1254</sonar-maven-plugin.version>
-        <spotbugs-maven-plugin.version>3.1.7</spotbugs-maven-plugin.version>
+        <spotbugs-maven-plugin.version>3.1.8</spotbugs-maven-plugin.version>
         <sphinx-maven-plugin.version>2.2.2</sphinx-maven-plugin.version>
     </properties>
 
@@ -108,10 +108,10 @@
                                 </goals>
                             </execution>
                             <execution>
-                                <id>report</id>
-                                <phase>test</phase>
+                                <id>report-aggregate</id>
+                                <phase>verify</phase>
                                 <goals>
-                                    <goal>report</goal>
+                                    <goal>report-aggregate</goal>
                                 </goals>
                             </execution>
                         </executions>
