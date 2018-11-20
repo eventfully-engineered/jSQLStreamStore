@@ -26,7 +26,7 @@
         <rxjava.version>2.2.3</rxjava.version>
         <uuid.generator.version>3.1.4</uuid.generator.version>
         <postgresql.version>42.2.5</postgresql.version>
-        <postgres.embedded.version>2.9</postgres.embedded.version>
+        <postgres.embedded.version>2.10</postgres.embedded.version>
         <mssql-jdbc.version>7.0.0.jre8</mssql-jdbc.version>
         <testcontainers.version>1.9.1</testcontainers.version>
         <flyway.version>5.2.1</flyway.version>
