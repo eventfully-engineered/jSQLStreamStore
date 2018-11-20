@@ -4,8 +4,8 @@ import com.fasterxml.uuid.Generators;
 import jsqlstreamstore.streams.*;
 import org.apache.commons.lang3.StringUtils;
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
 import ru.yandex.qatools.embed.postgresql.PostgresProcess;
@@ -23,7 +23,7 @@ class PostgresStreamStoreTest {
     private EmbeddedPostgres postgres;
     private PostgresStreamStore store;
 
-    @BeforeAll
+    @BeforeEach
     void setUp() throws Exception {
         postgres = new EmbeddedPostgres();
         String url = postgres.start(cachedRuntimeConfig(Paths.get(System.getProperty("java.io.tmpdir"), "pgembed")));
@@ -39,7 +39,7 @@ class PostgresStreamStoreTest {
         flyway.migrate();
     }
 
-    @AfterAll
+    @AfterEach
     void tearDown() {
         postgres.getProcess().ifPresent(PostgresProcess::stop);
     }
