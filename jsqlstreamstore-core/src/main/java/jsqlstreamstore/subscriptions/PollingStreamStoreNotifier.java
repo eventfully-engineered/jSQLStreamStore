@@ -14,6 +14,12 @@ import java.util.function.Supplier;
 
 /**
  * An implementation of {@link StreamStoreNotifier} that polls the target stream store for new message.
+ * TODO: Potentially revisit
+ * Cold Observables are ideal for the reactive pull model of backpressure described below.
+ * Hot Observables typically do not cope well with a reactive pull model, and are better candidates for some of the
+ * other flow control strategies discussed on this page, such as the use of the onBackpressureBuffer or
+ * onBackpressureDrop operators, throttling, buffers, or windows.
+ * Instead of a poll model could we just use a push model with backpressure of latest/drop or maybe even with throttling deboune?
  */
 public class PollingStreamStoreNotifier implements StreamStoreNotifier {
 
@@ -49,9 +55,9 @@ public class PollingStreamStoreNotifier implements StreamStoreNotifier {
      * @param interval The interval to poll in milliseconds
      * @param scheduler the Scheduler to use for scheduling the items
      */
+    // TODO: I assume this is really just for testing and we can make protected?
     public PollingStreamStoreNotifier(Supplier<Long> readHeadPosition, long interval, Scheduler scheduler) {
         this._readHeadPosition = readHeadPosition;
-        // should we use subscribeOn?
         this._appended = Observable.interval(interval, TimeUnit.MILLISECONDS, scheduler).map(tick -> poll());
         this._appended.subscribe(_storeAppended);
     }
