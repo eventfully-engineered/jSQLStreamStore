@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.1.xsd">
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.2.xsd">
     <suppress>
         <notes><![CDATA[false positive, CVE concerns the interactive installer in PostgreSQL which we dont use]]></notes>
         <cve>CVE-2016-7048</cve>
+    </suppress>
+    <suppress>
+        <notes><![CDATA[false positive, CVE concerns the maxRandom function of a smart contract implementation which
+         generates a random value with publicly readable variables because the _seed value can be retrieved.
+         Falls into the category of use of Cryptographically Weak Pseudo-Random Number Generator (PRNG).
+         Given we aren't in a secure or cryptographic context I'm suppressing as a false positive.]]>
+        </notes>
+        <cve>CVE-2018-12056</cve>
     </suppress>
 </suppressions>
