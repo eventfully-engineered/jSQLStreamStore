@@ -28,7 +28,7 @@
         <postgresql.version>42.2.5</postgresql.version>
         <postgres.embedded.version>2.10</postgres.embedded.version>
         <mssql-jdbc.version>7.0.0.jre8</mssql-jdbc.version>
-        <testcontainers.version>1.9.1</testcontainers.version>
+        <testcontainers.version>1.10.2</testcontainers.version>
         <flyway.version>5.2.3</flyway.version>
         <h2.version>1.4.197</h2.version>
         <jmh.version>1.21</jmh.version>
