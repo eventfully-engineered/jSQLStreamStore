@@ -23,7 +23,7 @@
         <slf4j.version>1.7.25</slf4j.version>
         <joda.version>2.10</joda.version>
         <jackson.version>2.9.7</jackson.version>
-        <rxjava.version>2.2.3</rxjava.version>
+        <rxjava.version>2.2.4</rxjava.version>
         <java-uuid-generator.version>3.1.5</java-uuid-generator.version>
         <postgresql.version>42.2.5</postgresql.version>
         <postgres.embedded.version>2.10</postgres.embedded.version>
