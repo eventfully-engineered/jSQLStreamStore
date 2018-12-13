@@ -168,7 +168,7 @@ class PostgresStreamStoreTest {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
-            "{\"name\":\"Sean\"}");
+            "{\"name\":\"Sean\",\"type\":\"someType\"}");
 
         store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
         ReadStreamPage page = store.readStreamForwards("test", 0, 1, true);

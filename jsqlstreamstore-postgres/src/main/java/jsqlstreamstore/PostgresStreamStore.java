@@ -75,20 +75,32 @@ public class PostgresStreamStore extends StreamStoreBase {
                         String type = result.getString(6);
                         String jsonMetadata = result.getString(7);
 
-                        GetJsonData getJsonData = prefetch
-                                ? () -> result.getString(8)
-                                : () -> getJsonData(streamId, streamVersion);
+                        // TODO: improve
+                        final StreamMessage message;
+                        if (prefetch) {
+                            message = new StreamMessage(
+                                streamId,
+                                messageId,
+                                streamVersion,
+                                ordinal,
+                                created,
+                                type,
+                                jsonMetadata,
+                                result.getString(8)
+                            );
+                        } else {
+                            message = new StreamMessage(
+                                streamId,
+                                messageId,
+                                streamVersion,
+                                ordinal,
+                                created,
+                                type,
+                                jsonMetadata,
+                                () -> getJsonData(streamId, streamVersion)
+                            );
+                        }
 
-                        StreamMessage message = new StreamMessage(
-                            streamId,
-                            messageId,
-                            streamVersion,
-                            ordinal,
-                            created,
-                            type,
-                            jsonMetadata,
-                            getJsonData
-                        );
 
                         messages.add(message);
                     }
@@ -144,20 +156,31 @@ public class PostgresStreamStore extends StreamStoreBase {
                         String type = result.getString(6);
                         String jsonMetadata = result.getString(7);
 
-                        GetJsonData getJsonData = prefetch
-                                ? () -> result.getString(8)
-                                : () -> getJsonData(streamId, streamVersion);
-
-                        StreamMessage message = new StreamMessage(
-                            streamId,
-                            messageId,
-                            streamVersion,
-                            ordinal,
-                            created,
-                            type,
-                            jsonMetadata,
-                            getJsonData
-                        );
+                        // TODO: improve
+                        final StreamMessage message;
+                        if (prefetch) {
+                            message = new StreamMessage(
+                                streamId,
+                                messageId,
+                                streamVersion,
+                                ordinal,
+                                created,
+                                type,
+                                jsonMetadata,
+                                result.getString(8)
+                            );
+                        } else {
+                            message = new StreamMessage(
+                                streamId,
+                                messageId,
+                                streamVersion,
+                                ordinal,
+                                created,
+                                type,
+                                jsonMetadata,
+                                () -> getJsonData(streamId, streamVersion)
+                            );
+                        }
 
                         messages.add(message);
                     }
@@ -580,8 +603,9 @@ public class PostgresStreamStore extends StreamStoreBase {
             PGobject pgObject = new PGobject();
             pgObject.setType("NewMessage");
 
+            // TODO: fix this...it sucks
             Joiner j = Joiner.on(",");
-            String s = j.join(message.getMessageId().toString(), String.valueOf(i + 1), date.toString(), message.getType(), message.getJsonData(), message.getJsonMetadata());
+            String s = j.join(message.getMessageId().toString(), String.valueOf(i + 1), date.toString(), message.getType(), "\""+message.getJsonData()+"\"", "\""+message.getJsonMetadata()+"\"");
             pgObject.setValue("(" +  s + ")");
             objects[i] = pgObject;
             i++;
@@ -823,20 +847,32 @@ public class PostgresStreamStore extends StreamStoreBase {
                         String type = result.getString(5);
                         String jsonMetadata = result.getString(6);
 
-                        GetJsonData getJsonData = prefetch
-                            ? () -> result.getString(7)
-                            : () -> getJsonData(sqlStreamId.getOriginalId(), streamVersion);
+                        // TODO: improve
+                        final StreamMessage message;
+                        if (prefetch) {
+                            message = new StreamMessage(
+                                sqlStreamId.getOriginalId(),
+                                messageId,
+                                streamVersion1,
+                                ordinal,
+                                created,
+                                type,
+                                jsonMetadata,
+                                result.getString(7)
+                            );
 
-                        StreamMessage message = new StreamMessage(
-                            sqlStreamId.getOriginalId(),
-                            messageId,
-                            streamVersion1,
-                            ordinal,
-                            created,
-                            type,
-                            jsonMetadata,
-                            getJsonData
-                        );
+                        } else {
+                            message = new StreamMessage(
+                                sqlStreamId.getOriginalId(),
+                                messageId,
+                                streamVersion1,
+                                ordinal,
+                                created,
+                                type,
+                                jsonMetadata,
+                                () -> getJsonData(sqlStreamId.getOriginalId(), streamVersion)
+                            );
+                        }
 
                         messages.add(message);
                     }
