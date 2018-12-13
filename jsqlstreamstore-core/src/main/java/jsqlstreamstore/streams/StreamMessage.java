@@ -26,6 +26,28 @@ public class StreamMessage {
      * @param createdUtc
      * @param type
      * @param jsonMetadata
+     * @param jsonData
+     */
+    public StreamMessage(String streamId,
+                         UUID messageId,
+                         int streamVersion,
+                         long position,
+                         DateTime createdUtc,
+                         String type,
+                         String jsonMetadata,
+                         String jsonData) {
+        this(streamId, messageId, streamVersion, position, createdUtc, type, jsonMetadata, () -> jsonData);
+    }
+
+    /**
+     *
+     * @param streamId
+     * @param messageId
+     * @param streamVersion
+     * @param position
+     * @param createdUtc
+     * @param type
+     * @param jsonMetadata
      * @param getJsonData
      */
     public StreamMessage(String streamId,
