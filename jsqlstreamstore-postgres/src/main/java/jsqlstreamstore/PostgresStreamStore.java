@@ -12,6 +12,8 @@ import jsqlstreamstore.store.ConnectionFactory;
 import jsqlstreamstore.store.StreamStoreBase;
 import jsqlstreamstore.streams.*;
 import jsqlstreamstore.subscriptions.*;
+import org.apache.commons.text.StringEscapeUtils;
+
 import org.joda.time.DateTime;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
@@ -605,7 +607,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             // TODO: fix this...it sucks
             Joiner j = Joiner.on(",");
-            String s = j.join(message.getMessageId().toString(), String.valueOf(i + 1), date.toString(), message.getType(), "\""+message.getJsonData()+"\"", "\""+message.getJsonMetadata()+"\"");
+            String s = j.join(message.getMessageId().toString(), String.valueOf(i + 1), date.toString(), message.getType(), "\""+ StringEscapeUtils.escapeJson(message.getJsonData())+"\"", "\""+StringEscapeUtils.escapeJson(message.getJsonMetadata())+"\"");
             pgObject.setValue("(" +  s + ")");
             objects[i] = pgObject;
             i++;
