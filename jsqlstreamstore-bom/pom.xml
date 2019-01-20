@@ -32,7 +32,7 @@
         <mssql-jdbc.version>7.1.4.jre8-preview</mssql-jdbc.version>
         <postgresql.version>42.2.5</postgresql.version>
         <postgresql-embedded.version>2.10</postgresql-embedded.version>
-        <rxjava.version>2.2.4</rxjava.version>
+        <rxjava.version>2.2.5</rxjava.version>
         <slf4j.version>1.7.25</slf4j.version>
         <testcontainers.version>1.10.3</testcontainers.version>
     </properties>
