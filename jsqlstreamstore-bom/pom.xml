@@ -34,7 +34,7 @@
         <postgresql-embedded.version>2.10</postgresql-embedded.version>
         <rxjava.version>2.2.6</rxjava.version>
         <slf4j.version>1.7.25</slf4j.version>
-        <testcontainers.version>1.10.5</testcontainers.version>
+        <testcontainers.version>1.10.6</testcontainers.version>
     </properties>
 
     <dependencyManagement>
