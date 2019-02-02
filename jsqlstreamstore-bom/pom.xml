@@ -29,7 +29,7 @@
         <jmh.version>1.21</jmh.version>
         <joda.version>2.10.1</joda.version>
         <jsqlstreamstore.version>${project.version}</jsqlstreamstore.version>
-        <mssql-jdbc.version>7.1.4.jre8-preview</mssql-jdbc.version>
+        <mssql-jdbc.version>7.2.0.jre8</mssql-jdbc.version>
         <postgresql.version>42.2.5</postgresql.version>
         <postgresql-embedded.version>2.10</postgresql-embedded.version>
         <rxjava.version>2.2.5</rxjava.version>
