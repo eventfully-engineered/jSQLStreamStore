@@ -24,7 +24,7 @@
         <flyway.version>5.2.4</flyway.version>
         <guava.version>27.1-jre</guava.version>
         <h2.version>1.4.197</h2.version>
-        <jackson.version>2.9.8</jackson.version>
+        <jackson.version>2.9.9</jackson.version>
         <java-uuid-generator.version>3.1.5</java-uuid-generator.version>
         <jmh.version>1.21</jmh.version>
         <joda.version>2.10.1</joda.version>
