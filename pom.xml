@@ -16,6 +16,7 @@
         <module>jsqlstreamstore-postgres</module>
         <module>jsqlstreamstore-oracle</module>
         <module>jsqlstreamstore-bom</module>
+        <module>jsqlstreamstore-sqlite</module>
     </modules>
 
     <properties>
