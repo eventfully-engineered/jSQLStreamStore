@@ -1,19 +1,13 @@
 package jsqlstreamstore.infrastructure;
 
+import com.google.common.base.Strings;
+
 import java.util.Optional;
 
 public final class Ensure {
 
 	private Ensure() {
 		// static utility
-	}
-
-	public static boolean isNullOrEmpty(String string) {
-		return stringIsNullOrEmpty(string);
-	}
-
-	public static boolean stringIsNullOrEmpty(String string) {
-		return string == null || string.isEmpty();
 	}
 
 	public static <T> T notNull(T t) {
@@ -24,7 +18,7 @@ public final class Ensure {
 	}
 
 	public static void notNullOrEmpty(String argument, String argumentName) {
-		if (isNullOrEmpty(argument)) {
+		if (Strings.isNullOrEmpty(argument)) {
 			throw new IllegalArgumentException(argument);
 		}
 	}
@@ -40,7 +34,7 @@ public final class Ensure {
 	        throw new IllegalArgumentException(argumentName + " should be positive.");
 	    }
 	}
-	
+
 	public static void positive(long number, String argumentName) {
 		if (number <= 0) {
 			throw new IllegalArgumentException(argumentName + " should be positive.");
