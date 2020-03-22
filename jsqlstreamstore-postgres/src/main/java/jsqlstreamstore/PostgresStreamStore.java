@@ -6,6 +6,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import io.reactivex.ObservableSource;
+import jsqlstreamstore.common.ResultSets;
 import jsqlstreamstore.infrastructure.Empty;
 import jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
 import jsqlstreamstore.store.ConnectionFactory;
@@ -74,7 +75,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                         ordinal = result.getLong(3);
                         UUID messageId = (UUID) result.getObject(4);
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = result.getTimestamp(5).toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
+                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
                         String type = result.getString(6);
                         String jsonMetadata = result.getString(7);
 
@@ -155,7 +156,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                         ordinal = result.getLong(3);
                         UUID messageId = (UUID) result.getObject(4);
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = result.getTimestamp(5).toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
+                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
                         String type = result.getString(6);
                         String jsonMetadata = result.getString(7);
 
@@ -846,7 +847,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                         long ordinal = result.getLong(2);
                         UUID messageId = (UUID) result.getObject(3);
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = result.getTimestamp(5).toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
+                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
                         String type = result.getString(5);
                         String jsonMetadata = result.getString(6);
 
