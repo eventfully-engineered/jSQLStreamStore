@@ -5,14 +5,19 @@ import jsqlstreamstore.streams.AppendResult;
 import jsqlstreamstore.streams.NewStreamMessage;
 import jsqlstreamstore.streams.SetStreamMetadataResult;
 import jsqlstreamstore.streams.StreamMessage;
-import org.joda.time.Period;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.Queue;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
@@ -21,16 +26,17 @@ import java.util.function.Consumer;
  */
 public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements IStreamStore {
 
+    protected final Logger logger = LoggerFactory.getLogger(StreamStoreBase.class);
+
     // SynchronousQueue
     private final Queue<Consumer> purgeQueue = new ArrayBlockingQueue<>(100);
+    // TODO: allow executor to be passed in
     private final ExecutorService purgeExecutor = Executors.newSingleThreadExecutor();
 
     ExecutorService exService = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
     ExecutorService executor = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(), new ThreadPoolExecutor.CallerRunsPolicy());
 
-    protected final Logger logger = LoggerFactory.getLogger(StreamStoreBase.class);
-
-    protected StreamStoreBase(Period metadataMaxAgeCacheExpiry,
+    protected StreamStoreBase(Duration metadataMaxAgeCacheExpiry,
                               int metadataMaxAgeCacheMaxSize) {
         super(metadataMaxAgeCacheExpiry, metadataMaxAgeCacheMaxSize);
     }
@@ -143,7 +149,8 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
         });
     }
 
-    protected abstract AppendResult appendToStreamInternal(String streamId, int expectedVersion,
+    protected abstract AppendResult appendToStreamInternal(String streamId,
+                                                           int expectedVersion,
                                                            NewStreamMessage[] messages) throws SQLException;
 
     protected abstract void deleteStreamInternal(String streamId, int expectedVersion) throws SQLException;

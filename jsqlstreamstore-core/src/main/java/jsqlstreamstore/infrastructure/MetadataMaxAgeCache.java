@@ -2,11 +2,12 @@ package jsqlstreamstore.infrastructure;
 
 import jsqlstreamstore.store.IReadOnlyStreamStore;
 import jsqlstreamstore.streams.StreamMetadataResult;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.Period;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class MetadataMaxAgeCache {
 
     private final IReadOnlyStreamStore _store;
-    private final Period _expiration;
+    private final Duration _expiration;
     private final int _maxSize;
     //private readonly GetUtcNow _getUtcNow;
     private final ConcurrentMap<String, MaxAgeCacheItem> _byStreamId = new ConcurrentHashMap<>();
@@ -24,7 +25,7 @@ public class MetadataMaxAgeCache {
     private AtomicLong _cacheHitCount = new AtomicLong(0);
 
     // GetUtcNow getUtcNow
-    public MetadataMaxAgeCache(IReadOnlyStreamStore store, Period expiration, int maxSize) {
+    public MetadataMaxAgeCache(IReadOnlyStreamStore store, Duration expiration, int maxSize) {
         //Ensure.That(store, nameof(store)).IsNotNull();
         //Ensure.That(maxSize).IsGte(0);
         //Ensure.That(getUtcNow).IsNotNull();
@@ -47,12 +48,10 @@ public class MetadataMaxAgeCache {
     public Integer getMaxAge(String streamId) throws SQLException {
         // TODO: use getUtcNow functional interface that would be passed in by callers/applications
         // var utcNow = _getUtcNow();
-        //ZonedDateTime utcNow = ZonedDateTime.now(ZoneOffset.UTC);
-        DateTime utcNow = DateTime.now(DateTimeZone.UTC);
+        LocalDateTime utcNow = LocalDateTime.now(ZoneId.of("UTC"));
         MaxAgeCacheItem cacheItem = _byStreamId.get(streamId);
         if (cacheItem != null) {
-            //ZonedDateTime expiresAt = cacheItem.cachedStampUtc.plus( _expiration);
-            DateTime expiresAt = cacheItem.cachedStampUtc.plus(_expiration);
+            LocalDateTime expiresAt = cacheItem.cachedStampUtc.plus(_expiration);
             if (expiresAt.isAfter(utcNow)) {
                 _cacheHitCount.incrementAndGet();
                 return cacheItem.maxAge;
@@ -78,11 +77,10 @@ public class MetadataMaxAgeCache {
 
     private class MaxAgeCacheItem {
         final String streamId;
-        //final ZonedDateTime cachedStampUtc;
-        final DateTime cachedStampUtc;
+        final LocalDateTime cachedStampUtc;
         final Integer maxAge;
 
-        MaxAgeCacheItem(String streamId, DateTime cachedStampUtc, Integer maxAge) {
+        MaxAgeCacheItem(String streamId, LocalDateTime cachedStampUtc, Integer maxAge) {
             this.streamId = streamId;
             this.cachedStampUtc = cachedStampUtc;
             this.maxAge = maxAge;

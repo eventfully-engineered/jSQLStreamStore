@@ -3,15 +3,26 @@ package jsqlstreamstore.store;
 import com.google.common.base.Preconditions;
 import jsqlstreamstore.infrastructure.Ensure;
 import jsqlstreamstore.infrastructure.MetadataMaxAgeCache;
-import jsqlstreamstore.streams.*;
-import jsqlstreamstore.subscriptions.*;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.Period;
+import jsqlstreamstore.streams.ReadAllPage;
+import jsqlstreamstore.streams.ReadNextAllPage;
+import jsqlstreamstore.streams.ReadNextStreamPage;
+import jsqlstreamstore.streams.ReadStreamPage;
+import jsqlstreamstore.streams.StreamMessage;
+import jsqlstreamstore.streams.StreamMetadataResult;
+import jsqlstreamstore.subscriptions.AllStreamMessageReceived;
+import jsqlstreamstore.subscriptions.AllStreamSubscription;
+import jsqlstreamstore.subscriptions.AllSubscriptionDropped;
+import jsqlstreamstore.subscriptions.HasCaughtUp;
+import jsqlstreamstore.subscriptions.StreamMessageReceived;
+import jsqlstreamstore.subscriptions.StreamSubscription;
+import jsqlstreamstore.subscriptions.SubscriptionDropped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +36,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 
     // TODO: change to java time Period?
     protected ReadOnlyStreamStoreBase(
-        Period metadataMaxAgeCacheExpiry,
+        Duration metadataMaxAgeCacheExpiry,
         int metadataMaxAgeCacheMaxSize) {
         _metadataMaxAgeCache = new MetadataMaxAgeCache(this, metadataMaxAgeCacheExpiry, metadataMaxAgeCacheMaxSize);
     }
@@ -215,9 +226,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
         if (maxAge == null) {
             return page;
         }
-        // var currentUtc = GetUtcNow();
-        //ZonedDateTime currentUtc =ZonedDateTime.now(ZoneOffset.UTC);
-        DateTime currentUtc = DateTime.now(DateTimeZone.UTC);
+        LocalDateTime currentUtc = LocalDateTime.now(ZoneId.of("UTC"));
         List<StreamMessage> valid = new ArrayList<>();
         for (StreamMessage message : page.getMessages()) {
             if (message.getCreatedUtc().plusSeconds(maxAge).isAfter(currentUtc)) {
@@ -243,8 +252,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
     private ReadAllPage filterExpired(ReadAllPage readAllPage, ReadNextAllPage readNext) throws SQLException {
 
         List<StreamMessage> valid = new ArrayList<>();
-        // var currentUtc = GetUtcNow();
-        DateTime currentUtc = DateTime.now(DateTimeZone.UTC);
+        LocalDateTime currentUtc = LocalDateTime.now(ZoneId.of("UTC"));
         for (StreamMessage streamMessage : readAllPage.getMessages()) {
             if (streamMessage.getStreamId().startsWith("$")) {
                 valid.add(streamMessage);

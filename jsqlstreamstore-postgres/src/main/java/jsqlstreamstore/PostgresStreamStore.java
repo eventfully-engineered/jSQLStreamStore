@@ -14,12 +14,13 @@ import jsqlstreamstore.streams.*;
 import jsqlstreamstore.subscriptions.*;
 import org.apache.commons.text.StringEscapeUtils;
 
-import org.joda.time.DateTime;
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -73,7 +74,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                         ordinal = result.getLong(3);
                         UUID messageId = (UUID) result.getObject(4);
                         // TODO: I dont think we need or want this
-                        DateTime created = new DateTime(result.getTime(5));
+                        LocalDateTime created = result.getTimestamp(5).toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
                         String type = result.getString(6);
                         String jsonMetadata = result.getString(7);
 
@@ -154,7 +155,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                         ordinal = result.getLong(3);
                         UUID messageId = (UUID) result.getObject(4);
                         // TODO: I dont think we need or want this
-                        DateTime created = new DateTime(result.getTime(5));
+                        LocalDateTime created = result.getTimestamp(5).toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
                         String type = result.getString(6);
                         String jsonMetadata = result.getString(7);
 
@@ -600,7 +601,7 @@ public class PostgresStreamStore extends StreamStoreBase {
         PGobject[] objects = new PGobject[messages.length];
         int i = 0;
         // TODO: remove date or make it user supplied
-        DateTime date = DateTime.now();
+        LocalDateTime date = LocalDateTime.now(ZoneId.of("UTC"));
         for (NewStreamMessage message : messages) {
             PGobject pgObject = new PGobject();
             pgObject.setType("NewMessage");
@@ -845,7 +846,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                         long ordinal = result.getLong(2);
                         UUID messageId = (UUID) result.getObject(3);
                         // TODO: I dont think we need or want this
-                        DateTime created = new DateTime(result.getTime(4));
+                        LocalDateTime created = result.getTimestamp(5).toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime();
                         String type = result.getString(5);
                         String jsonMetadata = result.getString(6);
 

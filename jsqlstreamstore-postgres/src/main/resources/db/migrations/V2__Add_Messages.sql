@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS public.Messages(
     StreamVersion       INT                                     NOT NULL,
     Position            SERIAL                                  NOT NULL,
     Id                  UUID                                    NOT NULL,
-    Created             timestamp                               NOT NULL,
+    Created             TIMESTAMP WITHOUT TIME ZONE             NOT NULL,
     Type                VARCHAR(128)                            NOT NULL,
     JsonData            VARCHAR                                 NOT NULL,
     JsonMetadata        VARCHAR                                       ,

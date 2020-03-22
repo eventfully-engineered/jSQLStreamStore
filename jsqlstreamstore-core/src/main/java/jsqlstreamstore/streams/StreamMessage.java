@@ -1,15 +1,15 @@
 package jsqlstreamstore.streams;
 
 import com.google.common.base.MoreObjects;
-import org.joda.time.DateTime;
 
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class StreamMessage {
-    
+
     private final long position;
-    private final DateTime createdUtc;
+    private final LocalDateTime createdUtc;
     private final UUID messageId;
     private final String jsonMetadata;
     private final int streamVersion;
@@ -32,7 +32,7 @@ public class StreamMessage {
                          UUID messageId,
                          int streamVersion,
                          long position,
-                         DateTime createdUtc,
+                         LocalDateTime createdUtc,
                          String type,
                          String jsonMetadata,
                          String jsonData) {
@@ -54,7 +54,7 @@ public class StreamMessage {
                          UUID messageId,
                          int streamVersion,
                          long position,
-                         DateTime createdUtc,
+                         LocalDateTime createdUtc,
                          String type,
                          String jsonMetadata,
                          GetJsonData getJsonData) {
@@ -72,7 +72,7 @@ public class StreamMessage {
         return position;
     }
 
-    public DateTime getCreatedUtc() {
+    public LocalDateTime getCreatedUtc() {
         return createdUtc;
     }
 
@@ -95,7 +95,7 @@ public class StreamMessage {
     public String getType() {
         return type;
     }
-    
+
     public String getJsonData() throws SQLException {
         return getJsonData.get();
     }

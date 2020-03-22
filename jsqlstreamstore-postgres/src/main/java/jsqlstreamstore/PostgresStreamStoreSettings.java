@@ -3,21 +3,22 @@ package jsqlstreamstore;
 import jsqlstreamstore.infrastructure.Ensure;
 import jsqlstreamstore.infrastructure.serialization.JacksonSerializer;
 import jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
-import jsqlstreamstore.subscriptions.PollingStreamStoreNotifier;
-import org.joda.time.Period;
 import jsqlstreamstore.store.ConnectionFactory;
 import jsqlstreamstore.subscriptions.CreateStreamStoreNotifier;
+import jsqlstreamstore.subscriptions.PollingStreamStoreNotifier;
 
 import javax.sql.DataSource;
 import java.sql.DriverManager;
+import java.time.Duration;
 import java.util.Properties;
 
 // TODO: compare Marten StoreOptions and AdvancedOptions
 public class PostgresStreamStoreSettings {
 
+    // TODO: change default schema to something other than default
     private static final String DEFAULT_SCHEMA = "public";
     private static final JsonSerializerStrategy DEFAULT_JSON_SERIALIZER_STRATEGY = JacksonSerializer.DEFAULT;
-    private static final Period DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE = Period.minutes(1);
+    private static final Duration DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE = Duration.ofMinutes(1);
     private static final int DEFAULT_METADATA_MAX_AGE_CACHE_MAX_SIZE = 10000;
     private static final CreateStreamStoreNotifier DEFAULT_CREATE_STREAM_STORE_NOTIFIER = store -> new PollingStreamStoreNotifier(store);
 
@@ -25,11 +26,11 @@ public class PostgresStreamStoreSettings {
     private ConnectionFactory connectionFactory;
     private JsonSerializerStrategy jsonSerializerStrategy = DEFAULT_JSON_SERIALIZER_STRATEGY;
     private CreateStreamStoreNotifier createStreamStoreNotifier = DEFAULT_CREATE_STREAM_STORE_NOTIFIER;
-    private Period metadataMaxAgeCacheExpire = DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE;
+    private Duration metadataMaxAgeCacheExpire = DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE;
     private int metadataMaxAgeCacheMaxSize = DEFAULT_METADATA_MAX_AGE_CACHE_MAX_SIZE;
 
     public void setSchema(String schema) {
-        Ensure.isNullOrEmpty(schema);
+        Ensure.notNullOrEmpty(schema, "schema");
         this.schema = schema;
     }
 
@@ -38,8 +39,7 @@ public class PostgresStreamStoreSettings {
     }
 
     public void setConnectionFactory(ConnectionFactory connectionFactory) {
-        Ensure.notNull(connectionFactory);
-        this.connectionFactory = connectionFactory;
+        this.connectionFactory = Ensure.notNull(connectionFactory);
     }
 
     public ConnectionFactory getConnectionFactory() {
@@ -47,8 +47,7 @@ public class PostgresStreamStoreSettings {
     }
 
     public void setJsonSerializerStrategy(JsonSerializerStrategy strategy) {
-        Ensure.notNull(strategy);
-        this.jsonSerializerStrategy = strategy;
+        this.jsonSerializerStrategy = Ensure.notNull(strategy);
     }
 
     public JsonSerializerStrategy getJsonSerializerStrategy() {
@@ -63,11 +62,11 @@ public class PostgresStreamStoreSettings {
         return createStreamStoreNotifier;
     }
 
-    public void setMetadataMaxAgeCacheExpire(Period metadataMaxAgeCacheExpire) {
+    public void setMetadataMaxAgeCacheExpire(Duration metadataMaxAgeCacheExpire) {
         this.metadataMaxAgeCacheExpire = metadataMaxAgeCacheExpire;
     }
 
-    public Period getMetadataMaxAgeCacheExpire() {
+    public Duration getMetadataMaxAgeCacheExpire() {
         return metadataMaxAgeCacheExpire;
     }
 
@@ -85,7 +84,7 @@ public class PostgresStreamStoreSettings {
         private String schema = DEFAULT_SCHEMA;
         private JsonSerializerStrategy jsonSerializerStrategy = DEFAULT_JSON_SERIALIZER_STRATEGY;
         private CreateStreamStoreNotifier createStreamStoreNotifier = DEFAULT_CREATE_STREAM_STORE_NOTIFIER;
-        private Period metadataMaxAgeCacheExpire = DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE;
+        private Duration metadataMaxAgeCacheExpire = DEFAULT_METADATA_MAX_AGE_CACHE_EXPIRE;
         private int metadataMaxAgeCacheMaxSize = DEFAULT_METADATA_MAX_AGE_CACHE_MAX_SIZE;
 
         public Builder(DataSource dataSource) {
@@ -115,7 +114,7 @@ public class PostgresStreamStoreSettings {
             return this;
         }
 
-        public Builder withJsonSerializerStrategry(JsonSerializerStrategy jsonSerializerStrategy) {
+        public Builder withJsonSerializerStrategy(JsonSerializerStrategy jsonSerializerStrategy) {
             Ensure.notNull(jsonSerializerStrategy);
             this.jsonSerializerStrategy = jsonSerializerStrategy;
             return this;
@@ -127,7 +126,7 @@ public class PostgresStreamStoreSettings {
             return this;
         }
 
-        public Builder withMetadataMaxAgeCacheExpire(Period metadataMaxAgeCacheExpire) {
+        public Builder withMetadataMaxAgeCacheExpire(Duration metadataMaxAgeCacheExpire) {
             Ensure.notNull(metadataMaxAgeCacheExpire);
             this.metadataMaxAgeCacheExpire = metadataMaxAgeCacheExpire;
             return this;

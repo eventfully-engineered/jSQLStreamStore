@@ -27,7 +27,6 @@
         <jackson.version>2.10.2</jackson.version>
         <java-uuid-generator.version>3.1.5</java-uuid-generator.version>
         <jmh.version>1.21</jmh.version>
-        <joda.version>2.10.1</joda.version>
         <jsqlstreamstore.version>${project.version}</jsqlstreamstore.version>
         <mssql-jdbc.version>7.2.2.jre8</mssql-jdbc.version>
         <postgresql.version>42.2.5</postgresql.version>
@@ -64,11 +63,6 @@
                 <groupId>com.fasterxml.uuid</groupId>
                 <artifactId>java-uuid-generator</artifactId>
                 <version>${java-uuid-generator.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>joda-time</groupId>
-                <artifactId>joda-time</artifactId>
-                <version>${joda.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.postgresql</groupId>
