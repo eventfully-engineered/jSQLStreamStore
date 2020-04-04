@@ -1,15 +1,16 @@
 SELECT
-    Messages.StreamVersion,
-    Messages.Position,
-    Messages.Id AS MessageId,
-    Messages.Created,
-    Messages.Type,
-    Messages.JsonMetadata,
-    Messages.JsonData
-FROM Messages
-INNER JOIN Streams ON Messages.StreamIdInternal = Streams.IdInternal
+    messages.stream_id,
+    messages.version,
+    messages.position,
+    messages.id AS message_id,
+    messages.created,
+    messages.type,
+    messages.metadata,
+    messages.data
+FROM messages
+INNER JOIN streams ON messages.stream_id = streams.id
 WHERE
-    Messages.StreamIdInternal = ?
-    AND Messages.StreamVersion >= ?
-ORDER BY Messages.Position
-LIMIT ?;
+    messages.stream_id = _stream_id
+    AND messages.version >= stream_version
+ORDER BY messages.position
+LIMIT batch_size;

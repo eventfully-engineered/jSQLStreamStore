@@ -1,7 +1,7 @@
 SELECT
-	Messages.StreamVersion
-FROM Messages
-INNER JOIN Streams ON Messages.StreamIdInternal = Streams.IdInternal
+	messages.stream_version
+FROM messages
+INNER JOIN streams ON messages.stream_id = streams.id
 WHERE
-    Streams.Id = ? AND Messages.Id = ?
+    streams.Id = ? AND messages.Id = ?
 LIMIT 1;

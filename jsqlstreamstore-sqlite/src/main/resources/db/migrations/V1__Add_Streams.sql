@@ -1,10 +1,10 @@
-CREATE TABLE IF NOT EXISTS Streams(
-    Id                  CHARACTER(42)                           NOT NULL,
-    IdOriginal          VARCHAR(1000)                           NOT NULL,
-    IdInternal          INTEGER PRIMARY KEY,
-    "Version"           BIGINT              DEFAULT(-1)         NOT NULL,
-    "Position" 			BIGINT 				DEFAULT(-1)			NOT NULL
-    --CONSTRAINT PK_Streams PRIMARY KEY (IdInternal)
-); -- WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS streams(
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    version INTEGER DEFAULT(-1) NOT NULL,
+    position INTEGER DEFAULT(-1) NOT NULL,
+    max_age INTEGER DEFAULT(NULL),
+    max_count INTEGER DEFAULT(NULL)
+);
 
-CREATE UNIQUE INDEX IF NOT EXISTS IX_Streams_Id ON Streams (Id);
+CREATE UNIQUE INDEX IF NOT EXISTS streams_name_key ON streams (name);

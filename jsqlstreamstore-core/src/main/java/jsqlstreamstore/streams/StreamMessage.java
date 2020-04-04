@@ -8,64 +8,64 @@ import java.util.UUID;
 
 public class StreamMessage {
 
+    private final String streamName;
     private final long position;
     private final LocalDateTime createdUtc;
     private final UUID messageId;
-    private final String jsonMetadata;
-    private final int streamVersion;
-    private final String streamId;
+    private final String metadata;
+    private final long streamVersion;
     private final String type;
     private final GetJsonData getJsonData;
 
     /**
      *
-     * @param streamId
+     * @param streamName
      * @param messageId
      * @param streamVersion
      * @param position
      * @param createdUtc
      * @param type
-     * @param jsonMetadata
-     * @param jsonData
+     * @param metadata
+     * @param data
      */
-    public StreamMessage(String streamId,
+    public StreamMessage(String streamName,
                          UUID messageId,
-                         int streamVersion,
+                         long streamVersion,
                          long position,
                          LocalDateTime createdUtc,
                          String type,
-                         String jsonMetadata,
-                         String jsonData) {
-        this(streamId, messageId, streamVersion, position, createdUtc, type, jsonMetadata, () -> jsonData);
+                         String metadata,
+                         String data) {
+        this(streamName, messageId, streamVersion, position, createdUtc, type, metadata, () -> data);
     }
 
     /**
      *
-     * @param streamId
+     * @param streamName
      * @param messageId
      * @param streamVersion
      * @param position
      * @param createdUtc
      * @param type
-     * @param jsonMetadata
-     * @param getJsonData
+     * @param metadata
+     * @param getData
      */
-    public StreamMessage(String streamId,
+    public StreamMessage(String streamName,
                          UUID messageId,
-                         int streamVersion,
+                         long streamVersion,
                          long position,
                          LocalDateTime createdUtc,
                          String type,
-                         String jsonMetadata,
-                         GetJsonData getJsonData) {
-        this.streamId = streamId;
+                         String metadata,
+                         GetJsonData getData) {
+        this.streamName = streamName;
         this.messageId = messageId;
         this.streamVersion = streamVersion;
         this.position = position;
         this.createdUtc = createdUtc;
         this.type = type;
-        this.jsonMetadata = jsonMetadata;
-        this.getJsonData = getJsonData;
+        this.metadata = metadata;
+        this.getJsonData = getData;
     }
 
     public long getPosition() {
@@ -80,16 +80,16 @@ public class StreamMessage {
         return messageId;
     }
 
-    public String getJsonMetadata() {
-        return jsonMetadata;
+    public String getMetadata() {
+        return metadata;
     }
 
-    public int getStreamVersion() {
+    public long getStreamVersion() {
         return streamVersion;
     }
 
-    public String getStreamId() {
-        return streamId;
+    public String getStreamName() {
+        return streamName;
     }
 
     public String getType() {
@@ -104,7 +104,7 @@ public class StreamMessage {
     public String toString() {
         return MoreObjects.toStringHelper(this)
                 .add("messageId", getMessageId())
-                .add("streamId", getStreamId())
+                .add("streamName", getStreamName())
                 .add("streamVersion", getStreamVersion())
                 .add("position", getPosition())
                 .add("type", getType())

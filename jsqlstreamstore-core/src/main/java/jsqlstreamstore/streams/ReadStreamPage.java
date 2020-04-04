@@ -24,7 +24,7 @@ public class ReadStreamPage {
      * The version of the stream that read from.
      * EventStore has FromEventNumber - The starting point (represented as a sequence number) of the read operation.
      */
-    private final int fromStreamVersion;
+    private final long fromStreamVersion;
 
     /**
      * The position of the last message in the stream.
@@ -36,13 +36,13 @@ public class ReadStreamPage {
      * The next message version that can be read.
      * EventStore has NextEventNumber - The next event number that can be read.
      */
-    private final int nextStreamVersion;
+    private final long nextStreamVersion;
 
     /**
      * The version of the last message in the stream.
      * EventStore has LastEventNumber - The last event number in the stream.
      */
-    private final int lastStreamVersion;
+    private final long lastStreamVersion;
 
     /**
      * The direction of read operation.
@@ -57,10 +57,10 @@ public class ReadStreamPage {
     private final PageReadStatus status;
 
     /**
-     * The id of the stream that was read.
+     * The name of the stream that was read.
      * EventStore has stream property - The name of the stream read
      */
-    private final String streamId;
+    private final String streamName;
 
     /**
      * Whether or not this is the end of the stream.
@@ -68,21 +68,21 @@ public class ReadStreamPage {
      */
     private final boolean isEnd;
 
-    public ReadStreamPage(String streamId,
+    public ReadStreamPage(String streamName,
                           PageReadStatus status,
-                          int fromStreamVersion,
-                          int nextStreamVersion,
-                          int lastStreamVersion,
+                          long fromStreamVersion,
+                          long nextStreamVersion,
+                          long lastStreamVersion,
                           long lastStreamPosition,
                           ReadDirection readDirection,
                           boolean isEnd,
                           ReadNextStreamPage readNext) {
-        this(streamId, status, fromStreamVersion, nextStreamVersion, lastStreamVersion, lastStreamPosition, readDirection, isEnd, readNext, null);
+        this(streamName, status, fromStreamVersion, nextStreamVersion, lastStreamVersion, lastStreamPosition, readDirection, isEnd, readNext, null);
     }
 
     /**
      *
-     * @param streamId - The id of the stream that was read.
+     * @param streamName - The name of the stream that was read.
      * @param status - The <see cref="PageReadStatus"/> of the read operation.
      * @param fromStreamVersion - The version of the stream that read from.
      * @param nextStreamVersion - The next message version that can be read.
@@ -92,17 +92,17 @@ public class ReadStreamPage {
      * @param isEnd - Whether or not this is the end of the stream.
      * @param readNext - The messages read.
      */
-    public ReadStreamPage(String streamId,
+    public ReadStreamPage(String streamName,
                           PageReadStatus status,
-                          int fromStreamVersion,
-                          int nextStreamVersion,
-                          int lastStreamVersion,
+                          long fromStreamVersion,
+                          long nextStreamVersion,
+                          long lastStreamVersion,
                           long lastStreamPosition,
                           ReadDirection readDirection,
                           boolean isEnd,
                           ReadNextStreamPage readNext,
                           StreamMessage[] messages) {
-        this.streamId = streamId;
+        this.streamName = streamName;
         this.status = status;
         this.fromStreamVersion = fromStreamVersion;
         this.lastStreamVersion = lastStreamVersion;
@@ -118,7 +118,7 @@ public class ReadStreamPage {
         return messages;
     }
 
-    public int getFromStreamVersion() {
+    public long getFromStreamVersion() {
         return fromStreamVersion;
     }
 
@@ -126,11 +126,11 @@ public class ReadStreamPage {
         return lastStreamPosition;
     }
 
-    public int getNextStreamVersion() {
+    public long getNextStreamVersion() {
         return nextStreamVersion;
     }
 
-    public int getLastStreamVersion() {
+    public long getLastStreamVersion() {
         return lastStreamVersion;
     }
 
@@ -142,8 +142,8 @@ public class ReadStreamPage {
         return status;
     }
 
-    public String getStreamId() {
-        return streamId;
+    public String getStreamName() {
+        return streamName;
     }
 
     public boolean isEnd() {
@@ -160,7 +160,7 @@ public class ReadStreamPage {
                 .add("fromStreamVersion", getFromStreamVersion())
                 .add("lastStreamVersion", getLastStreamVersion())
                 .add("status", getStatus())
-                .add("streamId", getStreamId())
+                .add("streamName", getStreamName())
                 .add("isEnd", isEnd())
                 .add("readDirection", getReadDirection())
                 .toString();

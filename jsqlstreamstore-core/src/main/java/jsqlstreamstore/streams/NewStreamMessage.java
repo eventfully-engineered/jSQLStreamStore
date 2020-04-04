@@ -13,35 +13,35 @@ public class NewStreamMessage {
 
     private final UUID messageId;
     private final String type;
-    private final String jsonData;
-    private final String jsonMetadata;
+    private final String data;
+    private final String metadata;
 
     /**
      *
      * @param messageId
      * @param type
-     * @param jsonData
+     * @param data
      */
-    public NewStreamMessage(UUID messageId, String type, String jsonData) {
-        this(messageId, type, jsonData, "");
+    public NewStreamMessage(UUID messageId, String type, String data) {
+        this(messageId, type, data, null);
     }
 
     /**
      *
      * @param messageId
      * @param type
-     * @param jsonData
-     * @param jsonMetadata
+     * @param data
+     * @param metadata
      */
-    public NewStreamMessage(UUID messageId, String type, String jsonData, String jsonMetadata) {
+    public NewStreamMessage(UUID messageId, String type, String data, String metadata) {
         Ensure.notNull(messageId);
         Ensure.notNullOrEmpty(type, "type");
-        Ensure.notNullOrEmpty(jsonData, "data");
+        Ensure.notNullOrEmpty(data, "data");
 
         this.messageId = messageId;
         this.type = type;
-        this.jsonData = jsonData;
-        this.jsonMetadata = jsonMetadata == null ? "" : jsonMetadata;
+        this.data = data;
+        this.metadata = metadata;
     }
 
     public UUID getMessageId() {
@@ -52,12 +52,12 @@ public class NewStreamMessage {
         return type;
     }
 
-    public String getJsonData() {
-        return jsonData;
+    public String getData() {
+        return data;
     }
 
-    public String getJsonMetadata() {
-        return jsonMetadata;
+    public String getMetadata() {
+        return metadata;
     }
 
     @Override

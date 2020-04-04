@@ -1,4 +1,3 @@
-SELECT
-	Streams.IdInternal, Streams."Version", Streams."Position"
-FROM Streams
-WHERE Streams.Id = ?;
+SELECT streams.id, streams.version, streams.position
+FROM streams
+WHERE streams.name = ?;

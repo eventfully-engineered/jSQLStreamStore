@@ -17,16 +17,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // is enough? Not sure I like the idea of exposing rxjava2's Disposable to the outside world
 public class StreamSubscriptionImpl implements StreamSubscription {
 
+    private static final Logger LOG = LoggerFactory.getLogger(StreamSubscriptionImpl.class);
+
     /**
      * The default page size to read.
      */
     public static final int DEFAULT_PAGE_SIZE = 10;
-    private static final Logger LOG = LoggerFactory.getLogger("StreamSubscriptionImpl");
+
     // TODO: allow this to be passed in?
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     private int _pageSize = DEFAULT_PAGE_SIZE;
-    private int _nextVersion;
+    private long _nextVersion;
     private Integer _continueAfterVersion;
     private IReadOnlyStreamStore _readonlyStreamStore;
     private StreamMessageReceived _streamMessageReceived;
@@ -41,7 +43,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
 
     private String streamId;
     private String name;
-    private Integer lastVersion;
+    private Long lastVersion;
 
     public StreamSubscriptionImpl(
             String streamId,
@@ -88,7 +90,7 @@ public class StreamSubscriptionImpl implements StreamSubscription {
     }
 
     @Override
-    public Integer getLastVersion() {
+    public Long getLastVersion() {
         return lastVersion;
     }
 

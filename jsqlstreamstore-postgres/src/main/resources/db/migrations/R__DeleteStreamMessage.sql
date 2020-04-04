@@ -1,17 +1,23 @@
-CREATE OR REPLACE FUNCTION deleteStreamMessage(streamId varchar, messageId UUID) RETURNS integer AS $$
+CREATE OR REPLACE FUNCTION deleteStreamMessage(
+    stream_name varchar,
+    message_id UUID
+)
+RETURNS integer
+AS $$
 DECLARE
-	v_streamIdInternal integer;
-	count integer;
+    _stream_id integer;
+	_count integer;
 BEGIN
 
-	SELECT public.Streams.IdInternal into v_streamIdInternal
-	FROM public.Streams
-	WHERE public.Streams.Id = streamId;
-	
-	DELETE FROM public.Messages
-    WHERE public.Messages.StreamIdInternal = v_streamIdInternal AND public.Messages.Id = messageId;
-    GET DIAGNOSTICS count = ROW_COUNT;
-    
-    RETURN count;
+	SELECT public.streams.id
+	INTO _stream_id
+	FROM public.streams
+	WHERE public.streams.name = stream_name;
+
+	DELETE FROM public.messages
+    WHERE public.messages.stream_id = _stream_id AND public.messages.id = message_id;
+    GET DIAGNOSTICS _count = ROW_COUNT;
+
+    RETURN _count;
 END;
 $$ LANGUAGE plpgsql;

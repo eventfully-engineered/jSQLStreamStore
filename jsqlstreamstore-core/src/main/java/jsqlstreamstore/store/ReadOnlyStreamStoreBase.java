@@ -42,7 +42,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
     }
 
 	@Override
-	public ReadAllPage readAllForwards(final long fromPositionInclusive, final int maxCount, final boolean prefetch) throws SQLException {
+	public ReadAllPage readAllForwards(final long fromPositionInclusive, final long maxCount, final boolean prefetch) throws SQLException {
 	    Ensure.nonnegative(fromPositionInclusive, "fromPositionInclusive");
 	    Ensure.positive(maxCount, "maxCount");
 
@@ -79,7 +79,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 	}
 
 	@Override
-	public ReadAllPage readAllBackwards(long fromPositionInclusive, int maxCount, boolean prefetch)  throws SQLException {
+	public ReadAllPage readAllBackwards(long fromPositionInclusive, long maxCount, boolean prefetch)  throws SQLException {
 	    Preconditions.checkArgument(fromPositionInclusive >= -1);
 	    Ensure.positive(maxCount, "maxCount");
 
@@ -93,31 +93,31 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 	}
 
 	@Override
-	public ReadStreamPage readStreamForwards(String streamId, int fromVersionInclusive, int maxCount, boolean prefetch) throws SQLException {
+	public ReadStreamPage readStreamForwards(String streamName, long fromVersionInclusive, long maxCount, boolean prefetch) throws SQLException {
 		// TODO: do we need -- ensure stream id is not null, empty or whitespaces
         Preconditions.checkArgument(fromVersionInclusive >= 0);
 		Preconditions.checkArgument(maxCount >= 1);
 
-        LOG.debug("ReadStreamForwards {} from version {} with max count {}.", streamId, fromVersionInclusive, maxCount);
+        LOG.debug("ReadStreamForwards {} from version {} with max count {}.", streamName, fromVersionInclusive, maxCount);
 
-        ReadNextStreamPage readNext = (int nextPosition) -> readStreamForwards(streamId, fromVersionInclusive, maxCount, prefetch);
+        ReadNextStreamPage readNext = (long nextPosition) -> readStreamForwards(streamName, fromVersionInclusive, maxCount, prefetch);
 
-        ReadStreamPage page = readStreamForwardsInternal(streamId, fromVersionInclusive, maxCount, prefetch, readNext);
+        ReadStreamPage page = readStreamForwardsInternal(streamName, fromVersionInclusive, maxCount, prefetch, readNext);
 
         return filterExpired(page, readNext);
 	}
 
 	@Override
-	public ReadStreamPage readStreamBackwards(String streamId, int fromVersionInclusive, int maxCount, boolean prefetch) throws SQLException {
+	public ReadStreamPage readStreamBackwards(String streamName, long fromVersionInclusive, long maxCount, boolean prefetch) throws SQLException {
         // TODO: do we need -- ensure stream id is not null, empty or whitespaces
         Preconditions.checkArgument(fromVersionInclusive >= -1);
         Preconditions.checkArgument(maxCount >= 1);
 
-        LOG.debug("ReadStreamBackwards {} from version {} with max count {}.", streamId, fromVersionInclusive, maxCount);
+        LOG.debug("ReadStreamBackwards {} from version {} with max count {}.", streamName, fromVersionInclusive, maxCount);
 
-        ReadNextStreamPage readNext = (int nextPosition) -> readStreamForwards(streamId, fromVersionInclusive, maxCount, prefetch);
+        ReadNextStreamPage readNext = (long nextPosition) -> readStreamForwards(streamName, fromVersionInclusive, maxCount, prefetch);
 
-		ReadStreamPage page = readStreamBackwardsInternal(streamId, fromVersionInclusive, maxCount, prefetch, readNext);
+		ReadStreamPage page = readStreamBackwardsInternal(streamName, fromVersionInclusive, maxCount, prefetch, readNext);
 
         return filterExpired(page, readNext);
 	}
@@ -127,18 +127,18 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 		return readHeadPositionInternal();
 	}
 
-	@Override
-	public StreamMetadataResult getStreamMetadata(String streamId) throws SQLException {
-        Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
-	    return getStreamMetadataInternal(streamId);
-	}
+//	@Override
+//	public StreamMetadataResult getStreamMetadata(String streamId) throws SQLException {
+//        Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+//	    return getStreamMetadataInternal(streamId);
+//	}
 
 	@Override
-    public StreamSubscription subscribeToStream(String streamId, Integer continueAfterVersion,
+    public StreamSubscription subscribeToStream(String streamName, Integer continueAfterVersion,
             StreamMessageReceived streamMessageReceived, SubscriptionDropped subscriptionDropped,
             HasCaughtUp hasCaughtUp, boolean prefetchJsonData, String name) {
         return subscribeToStreamInternal(
-                streamId,
+                streamName,
                 continueAfterVersion,
                 streamMessageReceived,
                 subscriptionDropped,
@@ -161,7 +161,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
     }
 
     protected abstract StreamSubscription subscribeToStreamInternal(
-            String streamId,
+            String streamName,
             Integer startVersion,
             StreamMessageReceived streamMessageReceived,
             SubscriptionDropped subscriptionDropped,
@@ -177,24 +177,24 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
         boolean prefetchJsonData,
         String name);
 
-	protected abstract ReadAllPage readAllForwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
+	protected abstract ReadAllPage readAllForwardsInternal(long fromPositionExclusive, long maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
 
-	protected abstract ReadAllPage readAllBackwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
+	protected abstract ReadAllPage readAllBackwardsInternal(long fromPositionExclusive, long maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
 
-	protected abstract ReadStreamPage readStreamForwardsInternal(String streamId, int start, int count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
+	protected abstract ReadStreamPage readStreamForwardsInternal(String streamName, long start, long count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
 
-	protected abstract ReadStreamPage readStreamBackwardsInternal(String streamId, int fromVersionInclusive, int count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
+	protected abstract ReadStreamPage readStreamBackwardsInternal(String streamName, long fromVersionInclusive, long count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
 
 	protected abstract Long readHeadPositionInternal();
 
-	protected abstract StreamMetadataResult getStreamMetadataInternal(String streamId) throws SQLException;
+	protected abstract StreamMetadataResult getStreamMetadataInternal(String streamName) throws SQLException;
 
     protected abstract void purgeExpiredMessage(StreamMessage streamMessage) throws SQLException;
 
 	// TODO: async task  / executor
     private ReadAllPage reloadAfterDelay(
         long fromPositionInclusive,
-        int maxCount,
+        long maxCount,
         boolean prefetch,
         ReadNextAllPage readNext) {
 
@@ -218,11 +218,11 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
         ReadStreamPage page,
         ReadNextStreamPage readNext) throws SQLException {
 
-        if (page.getStreamId().startsWith("$")) {
+        if (page.getStreamName().startsWith("$")) {
             return page;
         }
 
-        Integer maxAge = _metadataMaxAgeCache.getMaxAge(page.getStreamId());
+        Integer maxAge = _metadataMaxAgeCache.getMaxAge(page.getStreamName());
         if (maxAge == null) {
             return page;
         }
@@ -236,7 +236,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
             }
         }
         return new ReadStreamPage(
-            page.getStreamId(),
+            page.getStreamName(),
             page.getStatus(),
             page.getFromStreamVersion(),
             page.getNextStreamVersion(),
@@ -245,7 +245,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
             page.getReadDirection(),
             page.isEnd(),
             readNext,
-            valid.toArray(new StreamMessage[valid.size()]));
+            valid.toArray(new StreamMessage[0]));
     }
 
     // TODO: async task / executor
@@ -254,11 +254,11 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
         List<StreamMessage> valid = new ArrayList<>();
         LocalDateTime currentUtc = LocalDateTime.now(ZoneId.of("UTC"));
         for (StreamMessage streamMessage : readAllPage.getMessages()) {
-            if (streamMessage.getStreamId().startsWith("$")) {
+            if (streamMessage.getStreamName().startsWith("$")) {
                 valid.add(streamMessage);
                 continue;
             }
-            Integer maxAge = _metadataMaxAgeCache.getMaxAge(streamMessage.getStreamId());
+            Integer maxAge = _metadataMaxAgeCache.getMaxAge(streamMessage.getStreamName());
             if (maxAge == null) {
                 valid.add(streamMessage);
                 continue;
@@ -275,7 +275,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
             readAllPage.isEnd(),
             readAllPage.getReadDirection(),
             readNext,
-            valid.toArray(new StreamMessage[valid.size()]));
+            valid.toArray(new StreamMessage[0]));
     }
 
 }

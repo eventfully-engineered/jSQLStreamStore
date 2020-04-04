@@ -15,5 +15,5 @@ public interface GetNextVersion {
      * @param lastVersion
      * @return
      */
-    int get(List<StreamMessage> messages, int lastVersion);
+    long get(List<StreamMessage> messages, long lastVersion);
 }

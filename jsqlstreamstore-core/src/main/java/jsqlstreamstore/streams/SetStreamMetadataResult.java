@@ -3,7 +3,7 @@ package jsqlstreamstore.streams;
 import com.google.common.base.MoreObjects;
 
 /**
- * Represents the result of setting a stream's metadata 
+ * Represents the result of setting a stream's metadata
  *
  */
 public class SetStreamMetadataResult {
@@ -11,17 +11,17 @@ public class SetStreamMetadataResult {
     /**
      * The current version of the stream at the time the metadata was written.
      */
-    public final int currentVersion;
+    public final long currentVersion;
 
     /**
      * Initializes a new instance of the {@link SetStreamMetadataResult}.
      * @param currentVersion
      */
-    public SetStreamMetadataResult(int currentVersion) {
+    public SetStreamMetadataResult(long currentVersion) {
         this.currentVersion = currentVersion;
     }
 
-    public int getCurrentVersion() {
+    public long getCurrentVersion() {
         return currentVersion;
     }
 

@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  */
 public class PollingStreamStoreNotifier implements StreamStoreNotifier {
 
-    private static final Logger LOG = LoggerFactory.getLogger("PollingStreamStoreNotifier");
+    private static final Logger LOG = LoggerFactory.getLogger(PollingStreamStoreNotifier.class);
 
     private final Supplier<Long> _readHeadPosition;
     // TODO: not sure if this is the best way

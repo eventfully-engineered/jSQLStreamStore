@@ -9,7 +9,7 @@ public interface StreamSubscription extends Closeable {
 
     String getStreamId();
 
-    Integer getLastVersion();
+    Long getLastVersion();
 
     // Task started();
 

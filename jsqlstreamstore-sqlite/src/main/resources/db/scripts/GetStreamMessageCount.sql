@@ -1,7 +1,7 @@
 SELECT COUNT (*)
-FROM Messages
-WHERE Messages.StreamIdInternal = (
-	SELECT Streams.IdInternal
-    FROM Streams
-    WHERE Streams.Id = ?
+FROM messages
+WHERE messages.id = (
+	SELECT streams.id
+    FROM streams
+    WHERE streams.name = ?
 )

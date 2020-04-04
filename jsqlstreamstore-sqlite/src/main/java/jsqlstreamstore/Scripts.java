@@ -45,6 +45,10 @@ public final class Scripts {
         return getScript("GetStreamVersionOfMessageId");
     }
 
+    public String getInternalStreamId() {
+        return getScript("GetInternalStreamId");
+    }
+
     public String readHeadPosition() {
         return getScript("ReadHeadPosition");
     }

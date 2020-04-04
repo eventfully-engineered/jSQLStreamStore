@@ -9,13 +9,13 @@ import com.google.common.base.MoreObjects;
  */
 public class AppendResult {
 
-    private Integer maxCount;
+    private Long maxCount;
 
     /**
      * The current version of the stream after the append operation was performed
      *
      */
-    private final int currentVersion;
+    private final long currentVersion;
 
     /**
      * The current position of the stream after the append operation was performed
@@ -27,7 +27,7 @@ public class AppendResult {
      * @param currentVersion The current version of the stream after the append operation was performed.
      * @param currentPosition The current position of the stream after the append operation was performed.
      */
-    public AppendResult(int currentVersion, long currentPosition) {
+    public AppendResult(long currentVersion, long currentPosition) {
         this(null, currentVersion, currentPosition);
     }
 
@@ -36,17 +36,17 @@ public class AppendResult {
      * @param currentVersion The current version of the stream after the append operation was performed.
      * @param currentPosition The current position of the stream after the append operation was performed.
      */
-    public AppendResult(Integer maxCount, int currentVersion, long currentPosition) {
+    public AppendResult(Long maxCount, long currentVersion, long currentPosition) {
         this.maxCount = maxCount;
         this.currentVersion = currentVersion;
         this.currentPosition = currentPosition;
     }
 
-    public Integer getMaxCount() {
+    public Long getMaxCount() {
         return maxCount;
     }
 
-    public int getCurrentVersion() {
+    public long getCurrentVersion() {
         return currentVersion;
     }
 

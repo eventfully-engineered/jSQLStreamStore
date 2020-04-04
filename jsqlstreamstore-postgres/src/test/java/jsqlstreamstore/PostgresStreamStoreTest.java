@@ -1,7 +1,14 @@
 package jsqlstreamstore;
 
 import com.fasterxml.uuid.Generators;
-import jsqlstreamstore.streams.*;
+import jsqlstreamstore.streams.ExpectedVersion;
+import jsqlstreamstore.streams.NewStreamMessage;
+import jsqlstreamstore.streams.PageReadStatus;
+import jsqlstreamstore.streams.Position;
+import jsqlstreamstore.streams.ReadAllPage;
+import jsqlstreamstore.streams.ReadDirection;
+import jsqlstreamstore.streams.ReadStreamPage;
+import jsqlstreamstore.streams.StreamVersion;
 import org.apache.commons.lang3.StringUtils;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterEach;
@@ -14,7 +21,10 @@ import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static ru.yandex.qatools.embed.postgresql.EmbeddedPostgres.cachedRuntimeConfig;
 
 
@@ -76,6 +86,8 @@ class PostgresStreamStoreTest {
         assertEquals(ReadDirection.FORWARD, page.getReadDirection());
         assertEquals(1, page.getMessages().length);
         assertEquals(newMessage.getMessageId(), page.getMessages()[0].getMessageId());
+
+        assertNotNull(page.getMessages()[0].getJsonData());
     }
 
     @Test

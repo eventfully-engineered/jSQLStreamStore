@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // is enough? Not sure I like the idea of exposing rxjava2's Disposable to the outside world
 public class AllStreamSubscriptionImpl implements AllStreamSubscription {
 
-    private static final Logger LOG = LoggerFactory.getLogger("AllStreamSubscriptionImpl");
+    private static final Logger LOG = LoggerFactory.getLogger(AllStreamSubscriptionImpl.class);
 
     public static final int DEFAULT_PAGE_SIZE = 10;
     // TODO: allow this to be passed in?

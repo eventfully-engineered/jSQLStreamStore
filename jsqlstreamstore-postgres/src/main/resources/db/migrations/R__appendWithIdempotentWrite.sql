@@ -1,69 +1,74 @@
-CREATE OR REPLACE FUNCTION idempotentAppend(streamId varchar, streamIdOriginal varchar, newMessages NewMessage[]) RETURNS AppendResult AS $$
+CREATE OR REPLACE FUNCTION idempotentAppend(
+    stream_name varchar,
+    messages new_message[]
+)
+RETURNS SETOF append_result
+AS $$
 DECLARE
-	v_streamIdInternal integer;
-	v_metadataStreamId varchar(42);
-	v_metadataStreamIdInternal integer;
-	lastestStreamVersion integer;
-	latestStreamPosition bigint;
-	message NewMessage;
-	currentVersion integer;
-	currentPosition bigint;
-	ret AppendResult;
+    _stream_id integer;
+    _latest_stream_version bigint;
+    _latest_stream_position bigint;
+    message new_message;
+    ret append_result;
 	conflict record;
 BEGIN
 	-- https://stackoverflow.com/questions/4069718/postgres-insert-if-does-not-exist-already
-	IF NOT EXISTS (SELECT * FROM public.Streams WHERE public.Streams.Id = streamId) THEN
-		INSERT INTO public.Streams (Id, IdOriginal) VALUES (streamId, streamIdOriginal);
+	IF NOT EXISTS (SELECT * FROM public.streams WHERE public.streams.name = stream_name) THEN
+		INSERT INTO public.streams (name) VALUES (stream_name);
 	END IF;
 
 	-- lock?
-	SELECT public.Streams.IdInternal, public.Streams."Version" into v_streamIdInternal, lastestStreamVersion
-    FROM public.Streams
-    WHERE public.Streams.Id = streamId;
+	SELECT public.streams.id, public.streams.version, public.streams.position
+	INTO _stream_id, _latest_stream_version, _latest_stream_position
+    FROM public.streams
+    WHERE public.streams.name = stream_name;
 
-	foreach message in ARRAY newMessages
-	loop
+
+	FOREACH message in ARRAY messages
+	LOOP
 	    BEGIN
-          INSERT INTO public.Messages (StreamIdInternal, Id, StreamVersion, Created, Type, JsonData, JsonMetadata)
-          SELECT v_streamIdInternal, message.*;
-        EXCEPTION WHEN unique_violation THEN
-            SELECT * FROM public.Messages into conflict WHERE public.Messages.Id = Id;
-            IF message.type != conflict.type OR message.JsonData != conflict.JsonData OR message.JsonMetadata != conflict.JsonMetadata THEN
-                RAISE unique_violation USING MESSAGE = 'Duplicate message ID: ' || Id;
+            INSERT INTO public.messages (
+                id,
+                stream_id,
+                type,
+                version,
+                data,
+                metadata
+            )
+            VALUES (
+                message.id, -- TODO: might have to create
+                _stream_id,
+                message.type,
+                message.version,
+                message.data,
+                message.metadata
+            );
+	    EXCEPTION WHEN unique_violation THEN
+            SELECT * FROM public.messages INTO conflict WHERE public.messages.id = id;
+            IF message.type != conflict.type OR message.data != conflict.data OR message.metadata != conflict.metadata THEN
+                RAISE unique_violation USING MESSAGE = 'Duplicate message ID: ' || id;
             END IF;
         END;
-	end loop;
+	end LOOP;
 
-	SELECT StreamVersion, Position into lastestStreamVersion
-	FROM public.Messages
-	WHERE public.Messages.StreamIDInternal = v_streamIdInternal
-	ORDER BY public.Messages.Position DESC
+    -- TODO: could be a function to get last stream message
+	SELECT version, position
+	INTO _latest_stream_version, _latest_stream_position
+	FROM public.messages
+	WHERE public.messages.stream_id = _stream_id
+	ORDER BY public.messages.Position DESC
 	LIMIT 1;
 
-	IF latestStreamPosition IS NULL THEN
-		latestStreamPosition := -1;
+	IF _latest_stream_version IS NULL THEN
+		_latest_stream_position := -1;
 	END IF;
 
-	UPDATE public.Streams
-	SET "Version" = lastestStreamVersion, "Position" = latestStreamPosition
-	WHERE public.Streams.IdInternal = v_streamIdInternal;
+	UPDATE public.streams
+	SET version = _latest_stream_version, position = _latest_stream_position
+	WHERE public.streams.id = _stream_id;
 
-	SELECT lastestStreamVersion, latestStreamPosition into currentVersion, currentPosition;
-
-	v_metadataStreamId := '\\$\\$' || streamId;
-
-	SELECT IdInternal into v_metadataStreamIdInternal
-	FROM public.Streams
-	WHERE public.Streams.Id = v_metadataStreamId;
-
-	SELECT JsonData, currentVersion, currentPosition into ret
-	FROM public.Messages
-	WHERE public.Messages.StreamIdInternal = v_metadataStreamIdInternal
-	ORDER BY public.Messages.Position DESC
-	LIMIT 1;
-
-	RETURN ret;
+    RETURN QUERY SELECT null::bigint, _latest_stream_version, _latest_stream_position;
 
 END;
-$$ LANGUAGE plpgsql;
-
+$$ LANGUAGE plpgsql
+VOLATILE;

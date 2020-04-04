@@ -1,1 +1,1 @@
-{ call appendStreamExpectedVersionNoStream(?, ?, ?) }
+{ call appendStreamExpectedVersionNoStream(?, ?) }

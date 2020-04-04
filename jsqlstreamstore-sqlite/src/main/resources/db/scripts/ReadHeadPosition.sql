@@ -1,2 +1,2 @@
-SELECT MAX(public.Messages.Position)
-FROM Messages
+SELECT MAX(messages.position)
+FROM messages

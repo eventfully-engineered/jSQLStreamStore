@@ -14,5 +14,5 @@ public interface ReadNextStreamPage {
      * @param nextVersion
      * @return
      */
-    ReadStreamPage get(int nextVersion) throws SQLException;
+    ReadStreamPage get(long nextVersion) throws SQLException;
 }

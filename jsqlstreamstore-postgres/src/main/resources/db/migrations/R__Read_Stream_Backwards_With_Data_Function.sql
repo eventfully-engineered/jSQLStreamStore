@@ -1,67 +1,40 @@
-CREATE OR REPLACE FUNCTION readStreamBackwardsWithData(streamId varchar, _streamVersion integer, maxCount integer, OUT lastStreamVersion integer, OUT lastStreamPosition bigint, OUT messages refcursor) AS $$
-DECLARE 
-    v_streamIdInternal integer;
+CREATE OR REPLACE FUNCTION readStreamBackwardsWithData(
+    stream_name varchar,
+    stream_version bigint,
+    batch_size bigint,
+    OUT lastStreamVersion bigint,
+    OUT lastStreamPosition bigint,
+    OUT messages refcursor
+)
+AS $$
+DECLARE
+    _stream_id integer;
 BEGIN
 
-SELECT 
-    public.Streams.IdInternal, public.Streams."Version", public.Streams."Position" 
-    into v_streamIdInternal, lastStreamVersion, lastStreamPosition
-FROM public.Streams
-WHERE public.Streams.Id = streamId;
+    SELECT
+        public.streams.id, public.streams.version, public.streams.position
+        into _stream_id, lastStreamVersion, lastStreamPosition
+    FROM public.streams
+    WHERE public.streams.name = stream_name;
 
-OPEN messages FOR 
-SELECT 
-    public.Messages.StreamVersion,
-    public.Messages.Position,
-    public.Messages.Id AS MessageId,
-    public.Messages.Created,
-    public.Messages.Type,
-    public.Messages.JsonMetadata,
-    public.Messages.JsonData
-FROM public.Messages
-INNER JOIN public.Streams ON public.Messages.StreamIdInternal = public.Streams.IdInternal
-WHERE 
-    public.Messages.StreamIdInternal = v_streamIdInternal 
-    AND public.Messages.StreamVersion <= _streamVersion
-ORDER BY public.Messages.Position DESC
-LIMIT maxCount;
+    OPEN messages FOR
+    SELECT
+        public.messages.stream_id,
+        public.messages.version,
+        public.messages.position,
+        public.messages.id AS message_id,
+        public.messages.created,
+        public.messages.type,
+        public.messages.metadata,
+        public.messages.data
+    FROM public.messages
+    INNER JOIN public.streams ON public.messages.stream_id = public.streams.id
+    WHERE
+        public.messages.stream_id = _stream_id
+        AND public.messages.version <= stream_version
+    ORDER BY public.Messages.position DESC
+    LIMIT batch_size;
 
 END;
-
-/*
-read stream forwards sql script that doesn't when not used as stored proc
-Unsure if there is a way to do this without a proc
-
-SET @v_streamIdInternal integer;
-SET @v_lastStreamVersion integer;
-SET @v_lastStreamPosition integer;
-
-public.Streams.IdInternal into @v_streamIdInternal, public.Streams."Version" into @v_lastStreamVersion
-
-SELECT 
-    public.Streams.IdInternal into @v_streamIdInternal, 
-    public.Streams."Version" into @v_lastStreamVersion, 
-    public.Streams."Position" into @v_lastStreamPosition
-FROM public.Streams
-WHERE public.Streams.Id = ?;
-
-/* TODO: return lastStreamPosition */
-
-SELECT 
-    public.Messages.StreamVersion,
-    public.Messages.Position,
-    public.Messages.Id AS MessageId,
-    public.Messages.Created,
-    public.Messages.Type,
-    public.Messages.JsonMetadata,
-    public.Messages.JsonData
-FROM public.Messages
-INNER JOIN public.Streams ON public.Messages.StreamIdInternal = public.Streams.IdInternal
-WHERE 
-    public.Messages.StreamIdInternal = @v_streamIdInternal 
-    AND public.Messages.StreamVersion <= @v_lastStreamVersion
-ORDER BY public.Messages.Position DESC
-LIMIT ?;
-*/
-
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+VOLATILE;

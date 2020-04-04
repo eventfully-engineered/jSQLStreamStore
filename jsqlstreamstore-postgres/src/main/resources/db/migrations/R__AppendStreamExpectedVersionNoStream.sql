@@ -1,59 +1,62 @@
-CREATE OR REPLACE FUNCTION appendStreamExpectedVersionNoStream(streamId varchar, streamIdOriginal varchar, newMessages NewMessage[]) RETURNS AppendResult AS $$
-DECLARE 
-	v_streamIdInternal integer;
-	v_metadataStreamId varchar(42);
-	v_metadataStreamIdInternal integer;
-	lastestStreamVersion integer;
-	latestStreamPosition bigint;
-	message NewMessage;
-	currentVersion integer;
-	currentPosition bigint;
-    --ret record;
-    ret AppendResult;
+CREATE OR REPLACE FUNCTION appendStreamExpectedVersionNoStream(
+    stream_name varchar,
+    messages new_message[]
+)
+RETURNS SETOF append_result
+AS $$
+DECLARE
+    _stream_id integer;
+    _latest_stream_version bigint;
+    _latest_stream_position bigint;
+    message new_message;
+    ret append_result;
 BEGIN
 
-INSERT INTO public.Streams (Id, IdOriginal) VALUES (streamId, streamIdOriginal);
-SELECT LASTVAL() into v_streamIdInternal;
+    -- TODO: use returning id?
+    INSERT INTO public.streams (name) VALUES (stream_name) RETURNING id INTO _stream_id;
 
-foreach message in ARRAY newMessages
-loop
-	INSERT INTO public.Messages (StreamIdInternal, Id, StreamVersion, Created, Type, JsonData, JsonMetadata)
-	SELECT v_streamIdInternal, message.*;
-end loop;
+	FOREACH message in ARRAY messages
+	LOOP
+		INSERT INTO public.messages (
+		    id,
+		    stream_id,
+		    type,
+		    version,
+		    data,
+		    metadata
+		)
+		VALUES (
+		    message.id, -- TODO: might have to create
+		    _stream_id,
+		    message.type,
+		    message.version,
+		    message.data,
+		    message.metadata
+		);
+	end LOOP;
 
-SELECT StreamVersion, public.messages.Position into lastestStreamVersion, latestStreamPosition
-FROM public.Messages
-WHERE public.Messages.StreamIDInternal = v_streamIdInternal
-ORDER BY public.Messages.Position DESC
-LIMIT 1;
+    -- TODO: could be a function to get last stream message
+	SELECT version, position
+	INTO _latest_stream_version, _latest_stream_position
+	FROM public.messages
+	WHERE public.messages.stream_id = _stream_id
+	ORDER BY public.messages.position DESC
+	LIMIT 1;
 
-IF lastestStreamVersion IS NULL THEN
-	lastestStreamVersion := -1;
-END IF;
+    IF _latest_stream_version IS NULL THEN
+        _latest_stream_version := -1;
+    END IF;
 
-IF latestStreamPosition IS NULL THEN
-	latestStreamPosition := -1;
-END IF;
+    IF _latest_stream_position IS NULL THEN
+        _latest_stream_position := -1;
+    END IF;
 
-UPDATE public.Streams
-SET "Version" = lastestStreamVersion, "Position" = latestStreamPosition
-WHERE public.Streams.IdInternal = v_streamIdInternal;
+	UPDATE public.streams
+	SET version = _latest_stream_version, position = _latest_stream_position
+	WHERE public.streams.id = _stream_id;
 
-SELECT lastestStreamVersion, latestStreamPosition into currentVersion, currentPosition;
-
-v_metadataStreamId := '\\$\\$' || streamId;
-
-SELECT IdInternal into v_metadataStreamIdInternal
-FROM public.Streams
-WHERE public.Streams.Id = v_metadataStreamId;
-
-SELECT JsonData, currentVersion, currentPosition into ret
-FROM public.Messages
-WHERE public.Messages.StreamIdInternal = v_metadataStreamIdInternal
-ORDER BY public.Messages.Position DESC
-LIMIT 1;
-
-RETURN ret;
+    RETURN QUERY SELECT null::bigint, _latest_stream_version, _latest_stream_position;
 
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+VOLATILE;

@@ -42,28 +42,28 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
     }
 
     @Override
-    public AppendResult appendToStream(String streamId, int expectedVersion, NewStreamMessage message) throws SQLException {
-	    Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+    public AppendResult appendToStream(String streamName, long expectedVersion, NewStreamMessage message) throws SQLException {
+	    Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
 	    Preconditions.checkNotNull(message);
 
-	    logger.debug("AppendToStream {} with expected version {}", streamId, expectedVersion);
+	    logger.debug("AppendToStream {} with expected version {}", streamName, expectedVersion);
 
-	    return appendToStream(streamId, expectedVersion, new NewStreamMessage[] { message });
+	    return appendToStream(streamName, expectedVersion, new NewStreamMessage[] { message });
     }
 
     @Override
-    public AppendResult appendToStream(String streamId, int expectedVersion, NewStreamMessage[] messages) throws SQLException {
-        Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+    public AppendResult appendToStream(String streamName, long expectedVersion, NewStreamMessage[] messages) throws SQLException {
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
         Preconditions.checkNotNull(messages);
 
-        logger.debug("AppendToStream {} with expected version {} and {} messages.", streamId, expectedVersion, messages.length);
+        logger.debug("AppendToStream {} with expected version {} and {} messages.", streamName, expectedVersion, messages.length);
         if (messages.length == 0 && expectedVersion >= 0) {
             // If there is an expected version then nothing to do...
             // Expose CurrentPosition as part of AppendResult
             return createAppendResultAtHeadPosition(expectedVersion);
         }
         // ... expectedVersion.NoStream and ExpectedVersion.Any may create an empty stream though
-        return appendToStreamInternal(streamId, expectedVersion, messages);
+        return appendToStreamInternal(streamName, expectedVersion, messages);
     }
 
     /**
@@ -82,45 +82,45 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
      * As soon as there are events, both the in memory and the sql implementation seem to be doing the right thing.
      *
      */
-    private AppendResult createAppendResultAtHeadPosition(int expectedVersion) {
+    private AppendResult createAppendResultAtHeadPosition(long expectedVersion) {
         Long position = readHeadPosition();
         return new AppendResult(expectedVersion, position);
     }
 
     @Override
-	public void deleteStream(String streamId, int expectedVersion) throws SQLException {
-        Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+	public void deleteStream(String streamName, long expectedVersion) throws SQLException {
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
 
-        logger.debug("DeleteStream {} with expected version {}.", streamId, expectedVersion);
+        logger.debug("DeleteStream {} with expected version {}.", streamName, expectedVersion);
 
-        deleteStreamInternal(streamId, expectedVersion);
+        deleteStreamInternal(streamName, expectedVersion);
 	}
 
 	@Override
-	public void deleteMessage(String streamId, UUID messageId) throws SQLException {
-        Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+	public void deleteMessage(String streamName, UUID messageId) throws SQLException {
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
 
-	    logger.debug("DeleteMessage {} with messageId {}", streamId, messageId);
+	    logger.debug("DeleteMessage {} with messageId {}", streamName, messageId);
 
-        deleteMessageInternal(streamId, messageId);
+        deleteMessageInternal(streamName, messageId);
 
 	}
 
 	@Override
 	public SetStreamMetadataResult setStreamMetadata(
-	        String streamId,
-	        int expectedStreamMetadataVersion,
+	        String streamName,
+	        long expectedStreamMetadataVersion,
 	        Integer maxAge,
-	        Integer maxCount,
+	        Long maxCount,
 			String metadataJson) throws SQLException {
-        Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
         Preconditions.checkArgument(expectedStreamMetadataVersion >= -2, "expectedStreamMetadataVersion must be greater than or equal to -2");
 
         logger.debug("SetStreamMetadata {} with expected metadata version {}, max age {} and max count {}.",
-                streamId, expectedStreamMetadataVersion, maxAge, maxCount);
+            streamName, expectedStreamMetadataVersion, maxAge, maxCount);
 
         return setStreamMetadataInternal(
-            streamId,
+            streamName,
             expectedStreamMetadataVersion,
             maxAge,
             maxCount,
@@ -129,10 +129,10 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 
 	/**
 	 * Gets the count of messages in a stream
-	 * @param streamId The stream id
+	 * @param streamName The stream name
 	 * @return The number of messages in a stream.
 	 */
-    protected abstract int getStreamMessageCount(String streamId) throws SQLException;
+    protected abstract int getStreamMessageCount(String streamName) throws SQLException;
 
     /**
      * Queues a task to purge expired message.
@@ -142,25 +142,25 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
     protected void purgeExpiredMessage(StreamMessage streamMessage) throws SQLException {
         purgeExecutor.execute(() -> {
             try {
-                deleteMessageInternal(streamMessage.getStreamId(), streamMessage.getMessageId());
+                deleteMessageInternal(streamMessage.getStreamName(), streamMessage.getMessageId());
             } catch (SQLException e) {
                 logger.error("failed to purge expired message {}", streamMessage, e);
             }
         });
     }
 
-    protected abstract AppendResult appendToStreamInternal(String streamId,
-                                                           int expectedVersion,
+    protected abstract AppendResult appendToStreamInternal(String streamName,
+                                                           long expectedVersion,
                                                            NewStreamMessage[] messages) throws SQLException;
 
-    protected abstract void deleteStreamInternal(String streamId, int expectedVersion) throws SQLException;
+    protected abstract void deleteStreamInternal(String streamName, long expectedVersion) throws SQLException;
 
-    protected abstract void deleteMessageInternal(String streamId, UUID messageId) throws SQLException;
+    protected abstract void deleteMessageInternal(String streamName, UUID messageId) throws SQLException;
 
-    protected abstract SetStreamMetadataResult setStreamMetadataInternal(String streamId,
-                                                                         int expectedStreamMetadataVersion,
+    protected abstract SetStreamMetadataResult setStreamMetadataInternal(String streamName,
+                                                                         long expectedStreamMetadataVersion,
                                                                          Integer maxAge,
-                                                                         Integer maxCount,
+                                                                         Long maxCount,
                                                                          String metadataJson) throws SQLException;
 
 }

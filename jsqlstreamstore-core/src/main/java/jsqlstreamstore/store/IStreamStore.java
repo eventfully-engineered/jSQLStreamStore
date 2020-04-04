@@ -11,26 +11,26 @@ public interface IStreamStore {
 
     /**
      *
-     * @param streamId
+     * @param streamName
      * @param expectedVersion
      * @param message
      * @return
      * @throws SQLException
      */
-    AppendResult appendToStream(String streamId,
-                                int expectedVersion,
+    AppendResult appendToStream(String streamName,
+                                long expectedVersion,
                                 NewStreamMessage message) throws SQLException;
 
     /**
      *
-     * @param streamId
+     * @param streamName
      * @param expectedVersion
      * @param messages
      * @return
      * @throws SQLException
      */
-    AppendResult appendToStream(String streamId,
-                                int expectedVersion,
+    AppendResult appendToStream(String streamName,
+                                long expectedVersion,
                                 NewStreamMessage[] messages) throws SQLException;
 
 
@@ -68,24 +68,24 @@ public interface IStreamStore {
 	 * Hard deletes a stream and all of its messages. Deleting a stream will result in a '$stream-deleted'
      * message being appended to the '$deleted' stream. See {@Deleted.StreamDeleted} for the
      * message structure.
-	 * @param streamId The stream Id to delete.
+	 * @param streamName The stream Id to delete.
 	 * @param expectedVersion The stream expected version. See ExpectedVersion for const values.
 	 */
-	void deleteStream(String streamId, int expectedVersion /*= ExpectedVersion.Any*/) throws SQLException;
+	void deleteStream(String streamName, long expectedVersion /*= ExpectedVersion.Any*/) throws SQLException;
 
 	// TODO: delete event -- do we want to support?
 	/**
 	 * Hard deletes a message from the stream. Deleting a message will result in a '$message-deleted'
      * message being appended to the '$deleted' stream. See <see cref="Deleted.MessageDeleted"/> for the
      * message structure.
-	 * @param streamId stream to delete from
+	 * @param streamName stream to delete from
 	 * @param messageId The message to delete. If the message doesn't exist then nothing happens.
 	 */
-	void deleteMessage(String streamId, UUID messageId) throws SQLException;
+	void deleteMessage(String streamName, UUID messageId) throws SQLException;
 
 	/**
 	 * Sets the metadata for a stream.
-	 * @param streamId The stream Id to whose metadata is to be set.
+	 * @param streamName The stream Id to whose metadata is to be set.
 	 * @param expectedStreamMetadataVersion  The expected version number of the metadata stream to apply the metadata. Used for concurrency
      * handling. Default value is <see cref="ExpectedVersion.Any"/>. If specified and does not match
      * current version then <see cref="WrongExpectedVersionException"/> will be thrown.
@@ -93,9 +93,9 @@ public interface IStreamStore {
      * @param maxCount The max count of messages in the stream.
      * @param metadataJson Custom meta data to associate with the stream.
 	 */
-    SetStreamMetadataResult setStreamMetadata(String streamId,
-                                              int expectedStreamMetadataVersion, // = ExpectedVersion.Any,
+    SetStreamMetadataResult setStreamMetadata(String streamName,
+                                              long expectedStreamMetadataVersion, // = ExpectedVersion.Any,
                                               Integer maxAge,
-                                              Integer maxCount,
+                                              Long maxCount,
                                               String metadataJson) throws SQLException;
 }

@@ -1,2 +1,2 @@
-SELECT MAX(public.Messages.Position)
-FROM public.Messages
+SELECT MAX(public.messages.position)
+FROM public.messages;

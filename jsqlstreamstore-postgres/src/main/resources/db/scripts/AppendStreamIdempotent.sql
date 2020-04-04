@@ -1,1 +1,1 @@
-{ call idempotentAppend(?, ?, ?) }
+{ call idempotentAppend(?, ?) }

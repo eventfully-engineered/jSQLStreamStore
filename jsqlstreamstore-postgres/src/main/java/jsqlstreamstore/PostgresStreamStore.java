@@ -14,12 +14,18 @@ import jsqlstreamstore.store.StreamStoreBase;
 import jsqlstreamstore.streams.*;
 import jsqlstreamstore.subscriptions.*;
 import org.apache.commons.text.StringEscapeUtils;
-
 import org.postgresql.util.PGobject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.*;
+import java.sql.Array;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -56,7 +62,7 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    public ReadAllPage readAllForwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException {
+    public ReadAllPage readAllForwardsInternal(long fromPositionExclusive, long maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException {
         long ordinal = fromPositionExclusive;
 
         int resultSetCount;
@@ -64,47 +70,47 @@ public class PostgresStreamStore extends StreamStoreBase {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setLong(1, ordinal);
             // Read extra row to see if at end or not
-            stmt.setInt(2, maxCount == Integer.MAX_VALUE ? maxCount : maxCount + 1);
+            stmt.setLong(2, maxCount == Long.MAX_VALUE ? maxCount : maxCount + 1);
 
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
                     if (messages.size() < maxCount) {
-                        String streamId = result.getString(1);
-                        int streamVersion = result.getInt(2);
-                        ordinal = result.getLong(3);
-                        UUID messageId = (UUID) result.getObject(4);
+                        int streamId = result.getInt(1);
+                        String streamName = result.getString(2);
+                        long streamVersion = result.getLong(3);
+                        ordinal = result.getLong(4);
+                        UUID messageId = (UUID) result.getObject(5);
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
-                        String type = result.getString(6);
-                        String jsonMetadata = result.getString(7);
+                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(6));
+                        String type = result.getString(7);
+                        String metadata = result.getString(8);
 
                         // TODO: improve
                         final StreamMessage message;
                         if (prefetch) {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
                                 created,
                                 type,
-                                jsonMetadata,
-                                result.getString(8)
+                                metadata,
+                                result.getString(9)
                             );
                         } else {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
                                 created,
                                 type,
-                                jsonMetadata,
+                                metadata,
                                 () -> getJsonData(streamId, streamVersion)
                             );
                         }
-
 
                         messages.add(message);
                     }
@@ -129,13 +135,13 @@ public class PostgresStreamStore extends StreamStoreBase {
                 maxCount >= resultSetCount,
                 ReadDirection.FORWARD,
                 readNextAllPage,
-                messages.toArray(new StreamMessage[messages.size()]));
+                messages.toArray(new StreamMessage[0]));
         }
     }
 
     @Override
     public ReadAllPage readAllBackwardsInternal(long fromPositionExclusive,
-                                                int maxCount,
+                                                long maxCount,
                                                 boolean prefetch,
                                                 ReadNextAllPage readNextAllPage) throws SQLException {
         long ordinal = fromPositionExclusive == Position.END ? Long.MAX_VALUE : fromPositionExclusive;
@@ -145,43 +151,44 @@ public class PostgresStreamStore extends StreamStoreBase {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setLong(1, ordinal);
             // Read extra row to see if at end or not
-            stmt.setInt(2, maxCount == Integer.MAX_VALUE ? maxCount : maxCount + 1);
+            stmt.setLong(2, maxCount == Long.MAX_VALUE ? maxCount : maxCount + 1);
 
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
                     if (messages.size() < maxCount) {
-                        String streamId = result.getString(1);
-                        int streamVersion = result.getInt(2);
-                        ordinal = result.getLong(3);
-                        UUID messageId = (UUID) result.getObject(4);
+                        int streamId = result.getInt(1);
+                        String streamName = result.getString(2);
+                        long streamVersion = result.getLong(3);
+                        ordinal = result.getLong(4);
+                        UUID messageId = (UUID) result.getObject(5);
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
-                        String type = result.getString(6);
-                        String jsonMetadata = result.getString(7);
+                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(6));
+                        String type = result.getString(7);
+                        String metadata = result.getString(8);
 
                         // TODO: improve
                         final StreamMessage message;
                         if (prefetch) {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
                                 created,
                                 type,
-                                jsonMetadata,
-                                result.getString(8)
+                                metadata,
+                                result.getString(9)
                             );
                         } else {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
                                 created,
                                 type,
-                                jsonMetadata,
+                                metadata,
                                 () -> getJsonData(streamId, streamVersion)
                             );
                         }
@@ -215,15 +222,14 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    public ReadStreamPage readStreamForwardsInternal(String streamId,
-                                                     int start,
-                                                     int count,
+    public ReadStreamPage readStreamForwardsInternal(String streamName,
+                                                     long start,
+                                                     long count,
                                                      boolean prefetch,
                                                      ReadNextStreamPage readNext) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
-            SqlStreamId sqlStreamId = new SqlStreamId(streamId);
             return readStreamInternal(
-                    sqlStreamId,
+                    streamName,
                     start,
                     count,
                     ReadDirection.FORWARD,
@@ -234,15 +240,14 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    public ReadStreamPage readStreamBackwardsInternal(String streamId,
-                                                      int start,
-                                                      int count,
+    public ReadStreamPage readStreamBackwardsInternal(String streamName,
+                                                      long start,
+                                                      long count,
                                                       boolean prefetch,
                                                       ReadNextStreamPage readNext) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
-            SqlStreamId sqlStreamId = new SqlStreamId(streamId);
             return readStreamInternal(
-                    sqlStreamId,
+                    streamName,
                     start,
                     count,
                     ReadDirection.BACKWARD,
@@ -266,12 +271,11 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    public StreamMetadataResult getStreamMetadataInternal(String streamId) throws SQLException {
-        SqlStreamId sqlStreamId = new SqlStreamId(streamId);
+    public StreamMetadataResult getStreamMetadataInternal(String streamName) throws SQLException {
         ReadStreamPage page;
         try (Connection connection = connectionFactory.openConnection()) {
             page = readStreamInternal(
-                   sqlStreamId.getMetadataSqlStreamId(),
+                    streamName,
                     StreamVersion.END,
                     1,
                     ReadDirection.BACKWARD,
@@ -281,12 +285,12 @@ public class PostgresStreamStore extends StreamStoreBase {
         }
 
         if (page.getStatus() == PageReadStatus.STREAM_NOT_FOUND) {
-            return new StreamMetadataResult(streamId, -1);
+            return new StreamMetadataResult(streamName, -1);
         }
 
         MetadataMessage metadataMessage = jsonSerializerStrategy.fromJson(page.getMessages()[0].getJsonData(), MetadataMessage.class);
         return new StreamMetadataResult(
-                streamId,
+                streamName,
                 page.getLastStreamVersion(),
                 metadataMessage.getMaxAge(),
                 metadataMessage.getMaxCount(),
@@ -305,18 +309,20 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected AppendResult appendToStreamInternal(String streamId, int expectedVersion, NewStreamMessage[] messages)
-            throws SQLException {
-        Preconditions.checkArgument(!Strings.isNullOrEmpty(streamId));
+    protected AppendResult appendToStreamInternal(
+        String streamName,
+        long expectedVersion,
+        NewStreamMessage[] messages) throws SQLException {
+
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(streamName));
         Preconditions.checkArgument(expectedVersion >= -2);
         Preconditions.checkNotNull(messages);
 
         try (Connection connection = connectionFactory.openConnection()) {
-            SqlStreamId sqlStreamId = new SqlStreamId(streamId);
-            AppendResult result = appendToStreamInternal(connection, sqlStreamId, expectedVersion, messages);
+            AppendResult result = appendToStreamInternal(connection, streamName, expectedVersion, messages);
 
             if (result.getMaxCount() != null) {
-                checkStreamMaxCount(streamId, result.getMaxCount());
+                checkStreamMaxCount(streamName, result.getMaxCount());
             }
 
             return new AppendResult(result.getCurrentVersion(), result.getCurrentPosition());
@@ -325,8 +331,8 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     private AppendResult appendToStreamInternal(Connection connection,
-                                                SqlStreamId sqlStreamId,
-                                                int expectedVersion,
+                                                String streamName,
+                                                long expectedVersion,
                                                 NewStreamMessage[] messages) throws SQLException {
 
         // SqlStreamStore - when returned max count is not null
@@ -335,18 +341,18 @@ public class PostgresStreamStore extends StreamStoreBase {
         if (expectedVersion == ExpectedVersion.ANY) {
             return appendToStreamExpectedVersionAny(
                 connection,
-                sqlStreamId,
+                streamName,
                 messages);
         }
         if (expectedVersion == ExpectedVersion.NO_STREAM) {
             return appendToStreamExpectedVersionNoStream(
                 connection,
-                sqlStreamId,
+                streamName,
                 messages);
         }
         return appendToStreamExpectedVersion(
             connection,
-            sqlStreamId,
+            streamName,
             expectedVersion,
             messages);
     }
@@ -375,36 +381,35 @@ public class PostgresStreamStore extends StreamStoreBase {
 
 
     @Override
-    protected void deleteStreamInternal(String streamId, int expectedVersion) throws SQLException {
-        SqlStreamId sqlStreamId = new SqlStreamId(streamId);
+    protected void deleteStreamInternal(String streamName, long expectedVersion) throws SQLException {
         if (expectedVersion == ExpectedVersion.ANY) {
-            deleteStreamAnyVersion(sqlStreamId);
+            deleteStreamAnyVersion(streamName);
         } else {
-            deleteStreamExpectedVersion(sqlStreamId, expectedVersion);
+            deleteStreamExpectedVersion(streamName, expectedVersion);
         }
     }
 
-    private void deleteStreamExpectedVersion(SqlStreamId sqlStreamId, int expectedVersion) throws SQLException {
+    private void deleteStreamExpectedVersion(String streamName, long expectedVersion) throws SQLException {
         try (Connection connection = connectionFactory.openConnection();
              CallableStatement stmt = connection.prepareCall(scripts.deleteStreamExpectedVersion())) {
 
             connection.setAutoCommit(false);
-            stmt.setString(1, sqlStreamId.getId());
-            stmt.setInt(2, expectedVersion);
+            stmt.setString(1, streamName);
+            stmt.setLong(2, expectedVersion);
             stmt.executeUpdate();
 
-            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(sqlStreamId.getOriginalId());
-            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_SQL_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
+            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(streamName);
+            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
 
-             // Delete metadata stream (if it exists)
-             deleteStreamAnyVersion(connection, sqlStreamId.getMetadataSqlStreamId());
+            // Delete metadata stream (if it exists)
+            deleteStreamAnyVersion(connection, streamName);
 
             connection.commit();
         }
     }
 
     private AppendResult appendToStreamExpectedVersionAny(Connection connection,
-                                                          SqlStreamId sqlStreamId,
+                                                          String streamName,
                                                           NewStreamMessage[] messages) throws SQLException {
 
         // TODO: is this how we want to handle this?
@@ -415,13 +420,12 @@ public class PostgresStreamStore extends StreamStoreBase {
         try (CallableStatement cstmt = connection.prepareCall(scripts.getAppendStreamExpectedVersionAny())) {
             connection.setAutoCommit(false);
 
-            cstmt.setString(1, sqlStreamId.getId());
-            cstmt.setString(2, sqlStreamId.getOriginalId());
+            cstmt.setString(1, streamName);
 
             // create new message type array
             PGobject[] objects = convertToPGObjectArray(messages);
-            Array array = connection.createArrayOf("NewMessage", objects);
-            cstmt.setObject(3, array, Types.ARRAY);
+            Array array = connection.createArrayOf("new_message", objects);
+            cstmt.setObject(2, array, Types.ARRAY);
 
             cstmt.execute();
             connection.commit();
@@ -433,7 +437,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                     ? null
                     : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
 
-                Integer maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
+                Long maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
 
                 return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
             }
@@ -445,13 +449,13 @@ public class PostgresStreamStore extends StreamStoreBase {
             // SQLIntegrityConstraintViolationException
             // TODO: fix thix. should be contains but SqlCode might be better????
             if ("IX_Messages_StreamIdInternal_Id".equals(ex.getMessage())) {
-                int streamVersion = getStreamVersionOfMessageId(
+                long streamVersion = getStreamVersionOfMessageId(
                     connection,
-                    sqlStreamId,
+                    streamName,
                     messages[0].getMessageId());
 
                 ReadStreamPage page = readStreamInternal(
-                    sqlStreamId,
+                    streamName,
                     streamVersion,
                     messages.length,
                     ReadDirection.FORWARD,
@@ -461,14 +465,14 @@ public class PostgresStreamStore extends StreamStoreBase {
 
                 if (messages.length > page.getMessages().length) {
                     throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
+                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
                         ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
                             ex);
                     }
                 }
@@ -481,7 +485,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
+                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
                     ex);
             }
 
@@ -491,27 +495,26 @@ public class PostgresStreamStore extends StreamStoreBase {
 
     }
 
-    private int getStreamVersionOfMessageId(Connection connection,
-                                            SqlStreamId sqlStreamId,
+    private long getStreamVersionOfMessageId(Connection connection,
+                                            String streamName,
                                             UUID messageId) throws SQLException {
 
         try (CallableStatement command = connection.prepareCall(scripts.getStreamVersionOfMessageId())) {
             connection.setAutoCommit(false);
 
-            command.setString(1, sqlStreamId.getId());
+            command.setString(1, streamName);
             command.setString(2, messageId.toString());
-
             command.execute();
 
             try (ResultSet rs = command.getResultSet()) {
                 rs.next();
-                return rs.getInt(1);
+                return rs.getLong(1);
             }
         }
     }
 
     private AppendResult appendToStreamExpectedVersionNoStream(Connection connection,
-                                                               SqlStreamId sqlStreamId,
+                                                               String streamName,
                                                                NewStreamMessage[] messages) throws SQLException {
 
         // TODO: is this how we want to handle this?
@@ -521,24 +524,20 @@ public class PostgresStreamStore extends StreamStoreBase {
 
         try (CallableStatement cstmt = connection.prepareCall(scripts.getAppendStreamExpectedVersionNoStream())) {
             connection.setAutoCommit(false);
-            cstmt.setString(1, sqlStreamId.getId());
-            cstmt.setString(2, sqlStreamId.getOriginalId());
+
+            cstmt.setString(1, streamName);
 
             // create new message type array
             PGobject[] objects = convertToPGObjectArray(messages);
-            Array array = connection.createArrayOf("NewMessage", objects);
-            cstmt.setObject(3, array, Types.ARRAY);
+            Array array = connection.createArrayOf("new_message", objects);
+            cstmt.setObject(2, array, Types.ARRAY);
 
             boolean executeResult = cstmt.execute();
             connection.commit();
 
             try (ResultSet rs = cstmt.getResultSet()) {
                 rs.next();
-
-                MetadataMessage streamMetadataMessage = rs.getString(1) == null ? null : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
-                Integer maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
-
-                return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
+                return new AppendResult(ResultSets.getLong(rs, 1), rs.getInt(2), rs.getInt(3));
             }
         } catch (SQLException ex) {
             // Should we catch a PGSqlException instead?
@@ -557,7 +556,8 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             if ("23505".equals(ex.getSQLState())) {
                 ReadStreamPage page = readStreamInternal(
-                    sqlStreamId,
+                    // sqlStreamId,
+                    streamName,
                     StreamVersion.START,
                     messages.length,
                     ReadDirection.FORWARD,
@@ -567,14 +567,14 @@ public class PostgresStreamStore extends StreamStoreBase {
 
                 if (messages.length > page.getMessages().length) {
                     throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
+                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                         ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                             ex);
                     }
                 }
@@ -587,7 +587,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
+                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                     ex);
             }
 
@@ -605,11 +605,24 @@ public class PostgresStreamStore extends StreamStoreBase {
         LocalDateTime date = LocalDateTime.now(ZoneId.of("UTC"));
         for (NewStreamMessage message : messages) {
             PGobject pgObject = new PGobject();
-            pgObject.setType("NewMessage");
+            pgObject.setType("new_message");
+
+            // TODO: find way to avoid having to pass date
+
+            System.out.println(StringEscapeUtils.escapeJson(message.getData()));
 
             // TODO: fix this...it sucks
-            Joiner j = Joiner.on(",");
-            String s = j.join(message.getMessageId().toString(), String.valueOf(i + 1), date.toString(), message.getType(), "\""+ StringEscapeUtils.escapeJson(message.getJsonData())+"\"", "\""+StringEscapeUtils.escapeJson(message.getJsonMetadata())+"\"");
+            // json data contains commas so we need to wrap value in quotes so postgres doesnt intrepret
+            // comma as an argument separator
+
+            Joiner j = Joiner.on(",").useForNull("");
+            String s = j.join(
+                message.getMessageId().toString(),
+                message.getType(),
+                String.valueOf(i + 1),
+                escapeJson(message.getData()),
+                escapeJson(message.getMetadata()),
+                date.toString());
             pgObject.setValue("(" +  s + ")");
             objects[i] = pgObject;
             i++;
@@ -617,9 +630,18 @@ public class PostgresStreamStore extends StreamStoreBase {
         return objects;
     }
 
+    private static String escapeJson(String json) {
+        if (json == null) {
+            return null;
+        }
+
+        return "\"" + StringEscapeUtils.escapeJson(json) + "\"";
+    }
+
+
     private AppendResult appendToStreamExpectedVersion(Connection connection,
-                                                       SqlStreamId sqlStreamId,
-                                                       int expectedVersion,
+                                                       String streamName,
+                                                       long expectedVersion,
                                                        NewStreamMessage[] messages) throws SQLException {
 
         // TODO: is this how we want to handle this?
@@ -629,13 +651,12 @@ public class PostgresStreamStore extends StreamStoreBase {
 
         try (CallableStatement cstmt = connection.prepareCall(scripts.getAppendStreamExpectedVersion())) {
             connection.setAutoCommit(false);
-
-            cstmt.setString(1, sqlStreamId.getId());
-            cstmt.setInt(2, expectedVersion);
+            cstmt.setString(1, streamName);
+            cstmt.setLong(2, expectedVersion);
 
             // create new message type array
             PGobject[] objects = convertToPGObjectArray(messages);
-            Array array = connection.createArrayOf("NewMessage", objects);
+            Array array = connection.createArrayOf("new_message", objects);
             cstmt.setObject(3, array, Types.ARRAY);
 
             cstmt.execute();
@@ -643,11 +664,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             try (ResultSet rs = cstmt.getResultSet()) {
                 rs.next();
-
-                MetadataMessage streamMetadataMessage = rs.getString(1) == null ? null : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
-                Integer maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
-
-                return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
+                return new AppendResult(ResultSets.getLong(rs, 1), rs.getInt(2), rs.getInt(3));
             }
 
         } catch (SQLException ex) {
@@ -656,7 +673,8 @@ public class PostgresStreamStore extends StreamStoreBase {
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L372
             if ("WrongExpectedVersion".equals(ex.getMessage())) {
                 ReadStreamPage page = readStreamInternal(
-                    sqlStreamId,
+                    // sqlStreamId,
+                    streamName,
                     expectedVersion + 1,
                     messages.length,
                     ReadDirection.FORWARD,
@@ -666,14 +684,14 @@ public class PostgresStreamStore extends StreamStoreBase {
 
                 if (messages.length > page.getMessages().length) {
                     throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
+                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
                         ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
                             ex);
                     }
                 }
@@ -686,7 +704,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             // TODO: fix this...this
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
+                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
                     ex);
             }
 
@@ -696,35 +714,41 @@ public class PostgresStreamStore extends StreamStoreBase {
 
     }
 
-    private void deleteStreamAnyVersion(SqlStreamId sqlStreamId) throws SQLException {
+    private void deleteStreamAnyVersion(
+        // SqlStreamId sqlStreamId
+        String streamName
+    ) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
-            deleteStreamAnyVersion(connection, sqlStreamId);
+            deleteStreamAnyVersion(connection, streamName);
             // Delete metadata stream (if it exists)
-            deleteStreamAnyVersion(connection, sqlStreamId.getMetadataSqlStreamId());
+            deleteStreamAnyVersion(connection, streamName);
             connection.commit();
         }
     }
 
-    private void deleteStreamAnyVersion(Connection connection, SqlStreamId sqlStreamId) throws SQLException {
+    private void deleteStreamAnyVersion(Connection connection,
+                                        // SqlStreamId sqlStreamId
+                                        String streamName
+    ) throws SQLException {
 
         boolean aStreamIsDeleted;
         try (CallableStatement stmt = connection.prepareCall(scripts.deleteStreamAnyVersion())) {
-            stmt.setString(1, sqlStreamId.getId());
+            stmt.setString(1, streamName);
             int count = stmt.executeUpdate();
 
             aStreamIsDeleted = count > 0;
         }
 
         if (aStreamIsDeleted) {
-            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(sqlStreamId.getOriginalId());
-            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_SQL_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
+            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(streamName);
+            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
         }
 
     }
 
     @Override
-    protected void deleteMessageInternal(String streamId, UUID messageId) throws SQLException {
+    protected void deleteMessageInternal(String streamName, UUID messageId) throws SQLException {
 
         // TODO: could we batch the delete and inserts?
         // TODO: SQLStreamStore also does this via a taskqueue
@@ -732,15 +756,13 @@ public class PostgresStreamStore extends StreamStoreBase {
             connection.setAutoCommit(false);
 
             try (CallableStatement stmt = connection.prepareCall(scripts.deleteStreamMessage())) {
-                SqlStreamId sqlStreamId = new SqlStreamId(streamId);
-
-                stmt.setString(1, sqlStreamId.getId());
+                stmt.setString(1, streamName);
                 stmt.setObject(2, messageId);
 
                 stmt.execute();
                 if (stmt.getUpdateCount() == 1) {
-                    NewStreamMessage deletedMessage = Deleted.createMessageDeletedMessage(sqlStreamId.getOriginalId(), messageId);
-                    appendToStreamExpectedVersionAny(connection, Deleted.DELETED_SQL_STREAM_ID, new NewStreamMessage[] { deletedMessage });
+                    NewStreamMessage deletedMessage = Deleted.createMessageDeletedMessage(streamName, messageId);
+                    appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { deletedMessage });
                 }
             }
             connection.commit();
@@ -748,16 +770,15 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected SetStreamMetadataResult setStreamMetadataInternal(String streamId,
-                                                                int expectedStreamMetadataVersion,
+    protected SetStreamMetadataResult setStreamMetadataInternal(String streamName,
+                                                                long expectedStreamMetadataVersion,
                                                                 Integer maxAge,
-                                                                Integer maxCount,
+                                                                Long maxCount,
                                                                 String metadataJson) throws SQLException {
         AppendResult result;
         try (Connection connection = connectionFactory.openConnection()) {
-            SqlStreamId sqlStreamId = new SqlStreamId(streamId);
             MetadataMessage metadataMessage = new MetadataMessage(
-                streamId,
+                streamName,
                 maxAge,
                 maxCount,
                 metadataJson);
@@ -766,32 +787,33 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             result = appendToStreamInternal(
                 connection,
-                sqlStreamId.getMetadataSqlStreamId(),
+                // sqlStreamId.getMetadataSqlStreamId(),
+                streamName,
                 expectedStreamMetadataVersion,
                 new NewStreamMessage[]{newMessage});
 
             // TODO: reactive/task
-            checkStreamMaxCount(streamId, maxCount);
+            checkStreamMaxCount(streamName, maxCount);
 
             return new SetStreamMetadataResult(result.getCurrentVersion());
         }
     }
 
-    private ReadStreamPage readStreamInternal(SqlStreamId sqlStreamId,
-                                              int start,
-                                              int count,
+    private ReadStreamPage readStreamInternal(String streamName,
+                                              long start,
+                                              long count,
                                               ReadDirection direction,
                                               boolean prefetch,
                                               ReadNextStreamPage readNext,
                                               Connection connection) throws SQLException {
 
         // To read backwards from end, need to use int MaxValue
-        int streamVersion = start == StreamVersion.END ? Integer.MAX_VALUE : start;
+        long startVersion = start == StreamVersion.END ? Long.MAX_VALUE : start;
         String commandText;
         GetNextVersion getNextVersion;
         if (direction == ReadDirection.FORWARD) {
             commandText = prefetch ? scripts.readStreamForwardWithData() : scripts.readStreamForward();
-            getNextVersion = (List<StreamMessage> messages, int lastVersion) -> {
+            getNextVersion = (List<StreamMessage> messages, long lastVersion) -> {
                 if (messages != null && !messages.isEmpty()) {
                     return Iterables.getLast(messages).getStreamVersion() + 1;
                 }
@@ -799,7 +821,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             };
         } else {
             commandText = prefetch ? scripts.readStreamBackwardsWithData() : scripts.readStreamBackwards();
-            getNextVersion = (List<StreamMessage> messages, int lastVersion) -> {
+            getNextVersion = (List<StreamMessage> messages, long lastVersion) -> {
                 if (messages != null && !messages.isEmpty()) {
                     return Iterables.getLast(messages).getStreamVersion() - 1;
                 }
@@ -810,20 +832,21 @@ public class PostgresStreamStore extends StreamStoreBase {
         try (CallableStatement cstmt = connection.prepareCall(commandText)) {
             connection.setAutoCommit(false);
 
-            cstmt.setString(1, sqlStreamId.getId());
-            cstmt.setInt(2, streamVersion);
-            cstmt.setInt(3, count == Integer.MAX_VALUE ? count : count + 1);
-            cstmt.registerOutParameter(4, Types.INTEGER);
+            cstmt.setString(1, streamName);
+            cstmt.setLong(2, startVersion);
+            cstmt.setLong(3, count == Long.MAX_VALUE ? count : count + 1);
+            cstmt.registerOutParameter(4, Types.BIGINT);
             cstmt.registerOutParameter(5, Types.BIGINT);
             cstmt.registerOutParameter(6, Types.REF_CURSOR);
 
             cstmt.execute();
 
-            int lastStreamVersion = cstmt.getInt(4);
+            long lastStreamVersion = cstmt.getLong(4);
             // streamNotFound page
             if (cstmt.wasNull()) {
                 return new ReadStreamPage(
-                    sqlStreamId.getOriginalId(),
+                    streamName,
+                    // sqlStreamId.getOriginalId(),
                     PageReadStatus.STREAM_NOT_FOUND,
                     start,
                     StreamVersion.END,
@@ -843,38 +866,39 @@ public class PostgresStreamStore extends StreamStoreBase {
 
                 while (result.next()) {
                     if (messages.size() < count) {
-                        int streamVersion1 = result.getInt(1);
-                        long ordinal = result.getLong(2);
-                        UUID messageId = (UUID) result.getObject(3);
+                        int streamId = result.getInt(1);
+                        long version = result.getLong(2);
+                        long position = result.getLong(3);
+                        UUID messageId = (UUID) result.getObject(4);
                         // TODO: I dont think we need or want this
                         LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
-                        String type = result.getString(5);
-                        String jsonMetadata = result.getString(6);
+                        String type = result.getString(6);
+                        String metadata = result.getString(7);
 
                         // TODO: improve
                         final StreamMessage message;
                         if (prefetch) {
                             message = new StreamMessage(
-                                sqlStreamId.getOriginalId(),
+                                streamName,
                                 messageId,
-                                streamVersion1,
-                                ordinal,
+                                version,
+                                position,
                                 created,
                                 type,
-                                jsonMetadata,
-                                result.getString(7)
+                                metadata,
+                                result.getString(8)
                             );
 
                         } else {
                             message = new StreamMessage(
-                                sqlStreamId.getOriginalId(),
+                                streamName,
                                 messageId,
-                                streamVersion1,
-                                ordinal,
+                                version,
+                                position,
                                 created,
                                 type,
-                                jsonMetadata,
-                                () -> getJsonData(sqlStreamId.getOriginalId(), streamVersion)
+                                metadata,
+                                () -> getJsonData(streamId, version)
                             );
                         }
 
@@ -885,7 +909,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             }
 
             return new ReadStreamPage(
-                sqlStreamId.getOriginalId(),
+                streamName,
                 PageReadStatus.SUCCESS,
                 start,
                 getNextVersion.get(messages, lastStreamVersion),
@@ -899,11 +923,11 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     // TODO: make this reactive/async?
-    private String getJsonData(String streamId, int streamVersion) throws SQLException {
+    private String getJsonData(int streamId, long streamVersion) throws SQLException {
         String commandText = scripts.readMessageData();
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
-            stmt.setString(1, streamId);
-            stmt.setInt(2, streamVersion);
+            stmt.setInt(1, streamId);
+            stmt.setLong(2, streamVersion);
 
             try (ResultSet result = stmt.executeQuery()) {
                 return result.next() ? result.getString(1) : null;
@@ -913,13 +937,13 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     // TODO: make async/reactive
-    private void checkStreamMaxCount(String streamId, Integer maxCount) throws SQLException {
+    private void checkStreamMaxCount(String streamName, Long maxCount) throws SQLException {
         if (maxCount != null) {
-            Integer count = getStreamMessageCount(streamId);
+            Integer count = getStreamMessageCount(streamName);
             if (count > maxCount) {
-                int toPurge = count - maxCount;
+                long toPurge = count - maxCount;
                 ReadStreamPage streamMessagesPage = readStreamForwardsInternal(
-                    streamId,
+                    streamName,
                     StreamVersion.START,
                     toPurge,
                     false,
@@ -927,7 +951,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
                 if (streamMessagesPage.getStatus() == PageReadStatus.SUCCESS) {
                     for (StreamMessage message : streamMessagesPage.getMessages()) {
-                        deleteMessageInternal(streamId, message.getMessageId());
+                        deleteMessageInternal(streamName, message.getMessageId());
                     }
                 }
             }

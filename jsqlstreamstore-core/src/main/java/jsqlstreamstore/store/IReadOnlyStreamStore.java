@@ -24,7 +24,7 @@ public interface IReadOnlyStreamStore {
      * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
      * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
-    ReadAllPage readAllForwards(long fromPositionInclusive, int maxCount, boolean prefetch) throws SQLException;
+    ReadAllPage readAllForwards(long fromPositionInclusive, long maxCount, boolean prefetch) throws SQLException;
 
     /**
      *
@@ -33,33 +33,33 @@ public interface IReadOnlyStreamStore {
      * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
      * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
-    ReadAllPage readAllBackwards(long fromPositionInclusive, int maxCount, boolean prefetch) throws SQLException;
+    ReadAllPage readAllBackwards(long fromPositionInclusive, long maxCount, boolean prefetch) throws SQLException;
 
     /**
      *
-     * @param streamId the stream id to read
+     * @param streamName the stream to read
      * @param fromVersionInclusive The version of the stream to start reading from. Use StreamVersion.Start to read from the start.
      * @param maxCount maximum number of events to read
      * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
      * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
     ReadStreamPage readStreamForwards(
-        String streamId,
-        int fromVersionInclusive,
-        int maxCount,
+        String streamName,
+        long fromVersionInclusive,
+        long maxCount,
         boolean prefetch) throws SQLException;
 
     /**
      *
-     * @param streamId the stream id to read
+     * @param streamName the stream to read
      * @param fromVersionInclusive The version of the stream to start reading from. Use StreamVersion.End to read from the end
      * @param maxCount maximum number of events to read
      * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
      * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
-    ReadStreamPage readStreamBackwards(String streamId,
-                                       int fromVersionInclusive,
-                                       int maxCount,
+    ReadStreamPage readStreamBackwards(String streamName,
+                                       long fromVersionInclusive,
+                                       long maxCount,
                                        boolean prefetch) throws SQLException;
 
 
@@ -69,15 +69,15 @@ public interface IReadOnlyStreamStore {
 	 */
 	Long readHeadPosition();
 
-	/**
-	 * Gets the stream metadata
-	 * @param streamId The stream ID whose metadata is to be read.
-	 */
-	StreamMetadataResult getStreamMetadata(String streamId) throws SQLException;
+//	/**
+//	 * Gets the stream metadata
+//	 * @param streamId The stream ID whose metadata is to be read.
+//	 */
+//	StreamMetadataResult getStreamMetadata(String streamId) throws SQLException;
 
     /**
      *
-     * @param streamId streamId stream to subscribe to
+     * @param streamName  stream to subscribe to
      * @param continueAfterVersion fromVersionExclusive the version to describe from
      * @param streamMessageReceived streamMessageReceived a delegate that is invoked when a message is available. If an exception is thrown the subscription is terminated
      * @param subscriptionDropped subscriptionDropped a delegate that is invoked when a subscription fails
@@ -87,7 +87,7 @@ public interface IReadOnlyStreamStore {
      * @return
      */
     StreamSubscription subscribeToStream(
-        String streamId,
+        String streamName,
         Integer continueAfterVersion,
         StreamMessageReceived streamMessageReceived,
         SubscriptionDropped subscriptionDropped,

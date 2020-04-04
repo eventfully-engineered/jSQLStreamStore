@@ -3,6 +3,7 @@ package jsqlstreamstore;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
+import jsqlstreamstore.common.ResultSets;
 import jsqlstreamstore.infrastructure.Empty;
 import jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
 import jsqlstreamstore.store.ConnectionFactory;
@@ -59,9 +60,9 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected int getStreamMessageCount(String streamId) throws SQLException {
+    protected int getStreamMessageCount(String streamName) throws SQLException {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(scripts.getStreamMessageCount())) {
-            stmt.setString(1, streamId);
+            stmt.setString(1, streamName);
             try (ResultSet result = stmt.executeQuery()) {
                 result.next();
                 return result.getInt(1);
@@ -70,17 +71,16 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected AppendResult appendToStreamInternal(String streamId, int expectedVersion, NewStreamMessage[] messages) throws SQLException {
-        Preconditions.checkArgument(!Strings.isNullOrEmpty(streamId));
+    protected AppendResult appendToStreamInternal(String streamName, long expectedVersion, NewStreamMessage[] messages) throws SQLException {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(streamName));
         Preconditions.checkArgument(expectedVersion >= -2);
         Preconditions.checkNotNull(messages);
 
         try (Connection connection = connectionFactory.openConnection()) {
-            SqlStreamId sqlStreamId = new SqlStreamId(streamId);
-            AppendResult result = appendToStreamInternal(connection, sqlStreamId, expectedVersion, messages);
+            AppendResult result = appendToStreamInternal(connection, streamName, expectedVersion, messages);
 
             if (result.getMaxCount() != null) {
-                checkStreamMaxCount(streamId, result.getMaxCount());
+                checkStreamMaxCount(streamName, result.getMaxCount());
             }
 
             return new AppendResult(result.getCurrentVersion(), result.getCurrentPosition());
@@ -88,8 +88,8 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     private AppendResult appendToStreamInternal(Connection connection,
-                                                SqlStreamId sqlStreamId,
-                                                int expectedVersion,
+                                                String streamName,
+                                                long expectedVersion,
                                                 NewStreamMessage[] messages) throws SQLException {
 
         // SqlStreamStore - when returned max count is not null
@@ -98,25 +98,25 @@ public class SqliteStreamStore extends StreamStoreBase {
         if (expectedVersion == ExpectedVersion.ANY) {
             return appendToStreamExpectedVersionAny(
                 connection,
-                sqlStreamId,
+                streamName,
                 messages);
         }
         if (expectedVersion == ExpectedVersion.NO_STREAM) {
             return appendToStreamExpectedVersionNoStream(
                 connection,
-                sqlStreamId,
+                streamName,
                 messages);
         }
         return appendToStreamExpectedVersion(
             connection,
-            sqlStreamId,
+            streamName,
             expectedVersion,
             messages);
     }
 
 
     private AppendResult appendToStreamExpectedVersionAny(Connection connection,
-                                                          SqlStreamId sqlStreamId,
+                                                          String streamName,
                                                           NewStreamMessage[] messages) throws SQLException {
 
         // TODO: is this how we want to handle this?
@@ -124,13 +124,13 @@ public class SqliteStreamStore extends StreamStoreBase {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        try (ResultSet rs = insert(connection, sqlStreamId.getId(), sqlStreamId.getOriginalId(), messages)) {
+        try (ResultSet rs = insert(connection, streamName, messages)) {
             rs.next();
             MetadataMessage streamMetadataMessage = rs.getString(1) == null
                 ? null
                 : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
 
-            Integer maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
+            Long maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
 
             return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
         } catch (SQLException ex) {
@@ -143,11 +143,11 @@ public class SqliteStreamStore extends StreamStoreBase {
             if ("IX_Messages_StreamIdInternal_Id".equals(ex.getMessage())) {
                 int streamVersion = getStreamVersionOfMessageId(
                     connection,
-                    sqlStreamId,
+                    streamName,
                     messages[0].getMessageId());
 
                 ReadStreamPage page = readStreamInternal(
-                    sqlStreamId,
+                    streamName,
                     streamVersion,
                     messages.length,
                     ReadDirection.FORWARD,
@@ -157,14 +157,14 @@ public class SqliteStreamStore extends StreamStoreBase {
 
                 if (messages.length > page.getMessages().length) {
                     throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
+                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
                         ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
                             ex);
                     }
                 }
@@ -177,7 +177,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.ANY),
+                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
                     ex);
             }
 
@@ -188,7 +188,7 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     private AppendResult appendToStreamExpectedVersionNoStream(Connection connection,
-                                                               SqlStreamId sqlStreamId,
+                                                               String streamName,
                                                                NewStreamMessage[] messages) throws SQLException {
 
         // TODO: is this how we want to handle this?
@@ -196,13 +196,9 @@ public class SqliteStreamStore extends StreamStoreBase {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        try (ResultSet rs = insert(connection, sqlStreamId.getId(), sqlStreamId.getOriginalId(), messages)) {
+        try (ResultSet rs = insert(connection, streamName, messages)) {
             rs.next();
-
-            MetadataMessage streamMetadataMessage = rs.getString(2) == null ? null : jsonSerializerStrategy.fromJson(rs.getString(2), MetadataMessage.class);
-            Integer maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
-
-            return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
+            return new AppendResult(null, rs.getInt(3), rs.getInt(4));
         } catch (SQLException ex) {
             // Should we catch a PGSqlException instead?
             // might be better to use idempotent write in sql script such as SqlStreamStore postgres
@@ -220,7 +216,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
             if ("23505".equals(ex.getSQLState())) {
                 ReadStreamPage page = readStreamInternal(
-                    sqlStreamId,
+                    streamName,
                     StreamVersion.START,
                     messages.length,
                     ReadDirection.FORWARD,
@@ -230,14 +226,14 @@ public class SqliteStreamStore extends StreamStoreBase {
 
                 if (messages.length > page.getMessages().length) {
                     throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
+                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                         ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                             ex);
                     }
                 }
@@ -250,7 +246,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), ExpectedVersion.NO_STREAM),
+                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                     ex);
             }
 
@@ -261,8 +257,8 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     private AppendResult appendToStreamExpectedVersion(Connection connection,
-                                                       SqlStreamId sqlStreamId,
-                                                       int expectedVersion,
+                                                       String streamName,
+                                                       long expectedVersion,
                                                        NewStreamMessage[] messages) throws SQLException {
 
         // TODO: is this how we want to handle this?
@@ -270,11 +266,11 @@ public class SqliteStreamStore extends StreamStoreBase {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        try (ResultSet rs = insert(connection, sqlStreamId.getId(), sqlStreamId.getOriginalId(), messages)) {
+        try (ResultSet rs = insert(connection, streamName, messages)) {
             rs.next();
 
             MetadataMessage streamMetadataMessage = rs.getString(1) == null ? null : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
-            Integer maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
+            Long maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
 
             return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
         } catch (SQLException ex) {
@@ -283,7 +279,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L372
             if ("WrongExpectedVersion".equals(ex.getMessage())) {
                 ReadStreamPage page = readStreamInternal(
-                    sqlStreamId,
+                    streamName,
                     expectedVersion + 1,
                     messages.length,
                     ReadDirection.FORWARD,
@@ -293,14 +289,14 @@ public class SqliteStreamStore extends StreamStoreBase {
 
                 if (messages.length > page.getMessages().length) {
                     throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
+                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
                         ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
                             ex);
                     }
                 }
@@ -313,7 +309,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             // TODO: fix this...this
             if (ex instanceof SQLIntegrityConstraintViolationException) {
                 throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(sqlStreamId.getOriginalId(), expectedVersion),
+                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
                     ex);
             }
 
@@ -323,7 +319,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     }
 
-    private ResultSet insert(Connection connection, String streamId, String streamIdOriginal, NewStreamMessage newMessages[]) throws SQLException {
+    private ResultSet insert(Connection connection, String streamName, NewStreamMessage newMessages[]) throws SQLException {
         connection.setAutoCommit(false);
         //        IF NOT EXISTS (SELECT * FROM public.Streams WHERE public.Streams.Id = streamId) THEN
         //        INSERT INTO public.Streams (Id, IdOriginal) VALUES (streamId, streamIdOriginal);
@@ -337,28 +333,27 @@ public class SqliteStreamStore extends StreamStoreBase {
 //        SELECT 5, 'text to insert'
 //        WHERE NOT EXISTS(SELECT 1 FROM memos WHERE id = 5 AND text = 'text to insert');
 
-        PreparedStatement insertStreams = connection.prepareStatement("INSERT INTO Streams(Id, IdOriginal) VALUES (?, ?);");
-        insertStreams.setString(1, streamId);
-        insertStreams.setString(2, streamIdOriginal);
+        PreparedStatement insertStreams = connection.prepareStatement("INSERT INTO streams(name) VALUES (?);");
+        insertStreams.setString(1, streamName);
         int insertStreamsResult = insertStreams.executeUpdate();
         // TODO: check result
 
 
         // TODO: make a sql script
         String latestStreamPositionSql =
-            "SELECT Streams.IdInternal, Streams.\"Version\" as latestStreamVersion, Streams.\"Position\" as latestStreamPosition "
-                + "FROM Streams "
-                + "WHERE Streams.Id = ?";
+            "SELECT streams.id, streams.version, streams.position "
+                + "FROM streams "
+                + "WHERE streams.name = ?;";
 
         // TODO: should be closing resultsets
         PreparedStatement latestStreamPositionStmt = connection.prepareStatement(latestStreamPositionSql);
-        latestStreamPositionStmt.setString(1, streamId);
+        latestStreamPositionStmt.setString(1, streamName);
         ResultSet latestStreamPositionResult = latestStreamPositionStmt.executeQuery();
-        String streamIdInternal = null;
+        Integer streamIdInternal = null;
         int latestStreamVersionNewMessages = 0;
         int latestStreamPosition = 0;
         if (latestStreamPositionResult.next()) {
-            streamIdInternal = latestStreamPositionResult.getString(1);
+            streamIdInternal = latestStreamPositionResult.getInt(1);
             latestStreamVersionNewMessages = latestStreamPositionResult.getInt(2);
             latestStreamPosition = latestStreamPositionResult.getInt(3);
             if (latestStreamPositionResult.wasNull()) {
@@ -369,35 +364,36 @@ public class SqliteStreamStore extends StreamStoreBase {
         // Then insert...
         batchInsert(streamIdInternal, newMessages, latestStreamVersionNewMessages);
 
-        String streamVersion = "SELECT StreamVersion, Position as latestStreamVersion "
-            + "FROM Messages "
-            + "WHERE Messages.StreamIDInternal = ? "
-            + "ORDER BY Messages.Position DESC "
+        String streamVersion = "SELECT version, position "
+            + "FROM messages "
+            + "WHERE messages.stream_id = ? "
+            + "ORDER BY messages.position DESC "
             + "LIMIT 1";
         PreparedStatement streamVersionQuery = connection.prepareStatement(streamVersion);
-        streamVersionQuery.setString(1, streamIdInternal);
+        streamVersionQuery.setInt(1, streamIdInternal);
         ResultSet streamVersionQueryResult = streamVersionQuery.executeQuery();
         int latestStreamVersion = 0;
         if (streamVersionQueryResult.next()) {
             latestStreamVersion = streamVersionQueryResult.getInt(1);
         }
 
-        String updateStreamsSql = "UPDATE Streams "
-            + "SET \"Version\" = ?, \"Position\" = ? "
-            + "WHERE Streams.IdInternal = ?";
+        String updateStreamsSql = "UPDATE streams "
+            + "SET version = ?, position = ? "
+            + "WHERE streams.id = ?";
         PreparedStatement updateStreamsStmt = connection.prepareStatement(updateStreamsSql);
         updateStreamsStmt.setInt(1, latestStreamVersion);
         updateStreamsStmt.setInt(2, latestStreamPosition);
-        updateStreamsStmt.setString(3, streamIdInternal);
+        updateStreamsStmt.setInt(3, streamIdInternal);
         updateStreamsStmt.executeUpdate();
 
-        String selectLastMessageSql = "SELECT JsonData, JsonMetadata, StreamVersion, Position "
-            + "FROM Messages "
-            + "WHERE Messages.StreamIdInternal = ? "
-            + "ORDER BY Messages.Position DESC "
+        // TODO: make compatible with postgres
+        String selectLastMessageSql = "SELECT data, metadata, version, position "
+            + "FROM messages "
+            + "WHERE messages.stream_id = ? "
+            + "ORDER BY messages.position DESC "
             + "LIMIT 1";
         PreparedStatement selectLastMessageStmt = connection.prepareStatement(selectLastMessageSql);
-        selectLastMessageStmt.setString(1, streamIdInternal);
+        selectLastMessageStmt.setInt(1, streamIdInternal);
 
         connection.commit();
 
@@ -417,22 +413,22 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
 
-    private void batchInsert(String streamInternal, NewStreamMessage[] messages, int latestStreamVersion) throws SQLException {
+    private void batchInsert(Integer streamInternal, NewStreamMessage[] messages, long latestStreamVersion) throws SQLException {
         // TODO: just use the table default
         LocalDateTime date = LocalDateTime.now(ZoneId.of("UTC"));
-        String sql = "INSERT INTO Messages (StreamIdInternal, Id, StreamVersion, Created, Type, JsonData, JsonMetadata) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO messages (stream_id, Id, version, created, type, data, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)";
         PreparedStatement ps = connectionFactory.openConnection().prepareStatement(sql);
         final int batchSize = 1000;
         int count = 0;
         for (int i = 0; i < messages.length; i++) {
             NewStreamMessage message = messages[i];
-            ps.setString(1, streamInternal);
+            ps.setInt(1, streamInternal);
             ps.setString(2, message.getMessageId().toString());
             ps.setString(3, String.valueOf(i + 1));
             ps.setString(4, date.toString());
             ps.setString(5, message.getType());
-            ps.setString(6, message.getJsonData());
-            ps.setString(7, message.getJsonMetadata());
+            ps.setString(6, message.getData());
+            ps.setString(7, message.getMetadata());
             ps.addBatch();
 
             if (++count % batchSize == 0) {
@@ -481,57 +477,56 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected void deleteStreamInternal(String streamId, int expectedVersion) throws SQLException {
-        SqlStreamId sqlStreamId = new SqlStreamId(streamId);
+    protected void deleteStreamInternal(String streamName, long expectedVersion) throws SQLException {
         if (expectedVersion == ExpectedVersion.ANY) {
-            deleteStreamAnyVersion(sqlStreamId);
+            deleteStreamAnyVersion(streamName);
         } else {
-            deleteStreamExpectedVersion(sqlStreamId, expectedVersion);
+            deleteStreamExpectedVersion(streamName, expectedVersion);
         }
     }
 
-    private void deleteStreamExpectedVersion(SqlStreamId sqlStreamId, int expectedVersion) throws SQLException {
+    private void deleteStreamExpectedVersion(String streamName, long expectedVersion) throws SQLException {
         try (Connection connection = connectionFactory.openConnection();
              CallableStatement stmt = connection.prepareCall(scripts.deleteStreamExpectedVersion())) {
 
             connection.setAutoCommit(false);
-            stmt.setString(1, sqlStreamId.getId());
-            stmt.setInt(2, expectedVersion);
+            stmt.setString(1, streamName);
+            stmt.setLong(2, expectedVersion);
             stmt.executeUpdate();
 
-            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(sqlStreamId.getOriginalId());
-            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_SQL_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
+            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(streamName);
+            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
 
             // Delete metadata stream (if it exists)
-            deleteStreamAnyVersion(connection, sqlStreamId.getMetadataSqlStreamId());
+            deleteStreamAnyVersion(connection, streamName);
 
             connection.commit();
         }
     }
 
-    private void deleteStreamAnyVersion(SqlStreamId sqlStreamId) throws SQLException {
+    private void deleteStreamAnyVersion(String streamName) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
-            deleteStreamAnyVersion(connection, sqlStreamId);
+            deleteStreamAnyVersion(connection, streamName);
             // Delete metadata stream (if it exists)
-            deleteStreamAnyVersion(connection, sqlStreamId.getMetadataSqlStreamId());
+            deleteStreamAnyVersion(connection, streamName);
             connection.commit();
         }
     }
 
-    private void deleteStreamAnyVersion(Connection connection, SqlStreamId sqlStreamId) throws SQLException {
+    private void deleteStreamAnyVersion(Connection connection, String streamName) throws SQLException {
 
         boolean aStreamIsDeleted;
         try (CallableStatement stmt = connection.prepareCall(scripts.deleteStreamAnyVersion())) {
-            stmt.setString(1, sqlStreamId.getId());
+            stmt.setString(1, streamName);
             int count = stmt.executeUpdate();
 
             aStreamIsDeleted = count > 0;
         }
 
         if (aStreamIsDeleted) {
-            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(sqlStreamId.getOriginalId());
-            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_SQL_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
+            NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(streamName);
+            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
         }
 
     }
@@ -543,24 +538,46 @@ public class SqliteStreamStore extends StreamStoreBase {
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
 
-            try (CallableStatement stmt = connection.prepareCall(scripts.deleteStreamMessage())) {
+            String internalStreamId = getInternalStreamId(streamId);
+            // TODO: handle null
+
+            try (PreparedStatement stmt = connection.prepareStatement(scripts.deleteStreamMessage())) {
                 SqlStreamId sqlStreamId = new SqlStreamId(streamId);
 
-                stmt.setString(1, sqlStreamId.getId());
+                stmt.setString(1, internalStreamId);
                 stmt.setObject(2, messageId);
 
                 stmt.execute();
                 if (stmt.getUpdateCount() == 1) {
                     NewStreamMessage deletedMessage = Deleted.createMessageDeletedMessage(sqlStreamId.getOriginalId(), messageId);
-                    appendToStreamExpectedVersionAny(connection, Deleted.DELETED_SQL_STREAM_ID, new NewStreamMessage[] { deletedMessage });
+                    appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { deletedMessage });
                 }
             }
             connection.commit();
         }
     }
 
+    private String getInternalStreamId(String streamId) throws SQLException {
+        // TODO: could we batch the delete and inserts?
+        // TODO: SQLStreamStore also does this via a taskqueue
+        try (Connection connection = connectionFactory.openConnection()) {
+            try (PreparedStatement stmt = connection.prepareStatement(scripts.getInternalStreamId())) {
+                SqlStreamId sqlStreamId = new SqlStreamId(streamId);
+
+                stmt.setString(1, sqlStreamId.getId());
+
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+
+                return null;
+            }
+        }
+    }
+
     @Override
-    protected SetStreamMetadataResult setStreamMetadataInternal(String streamId, int expectedStreamMetadataVersion, Integer maxAge, Integer maxCount, String metadataJson) throws SQLException {
+    protected SetStreamMetadataResult setStreamMetadataInternal(String streamName, long expectedStreamMetadataVersion, Integer maxAge, Long maxCount, String metadataJson) throws SQLException {
         return null;
     }
 
@@ -576,7 +593,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     @Override
     protected ReadAllPage readAllForwardsInternal(long fromPositionExclusive,
-                                                  int maxCount,
+                                                  long maxCount,
                                                   boolean prefetch,
                                                   ReadNextAllPage readNextAllPage) throws SQLException {
         long ordinal = fromPositionExclusive;
@@ -586,20 +603,21 @@ public class SqliteStreamStore extends StreamStoreBase {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setLong(1, ordinal);
             // Read extra row to see if at end or not
-            stmt.setInt(2, maxCount == Integer.MAX_VALUE ? maxCount : maxCount + 1);
+            stmt.setLong(2, maxCount == Long.MAX_VALUE ? maxCount : maxCount + 1);
 
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
                     if (messages.size() < maxCount) {
                         String streamId = result.getString(1);
-                        int streamVersion = result.getInt(2);
-                        ordinal = result.getLong(3);
-                        UUID messageId = UUID.fromString(result.getString(4));
+                        String streamName = result.getString(2);
+                        int streamVersion = result.getInt(3);
+                        ordinal = result.getLong(4);
+                        UUID messageId = UUID.fromString(result.getString(5));
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = LocalDateTime.parse(result.getString(5));
-                        String type = result.getString(6);
-                        String jsonMetadata = result.getString(7);
+                        LocalDateTime created = LocalDateTime.parse(result.getString(6));
+                        String type = result.getString(7);
+                        String jsonMetadata = result.getString(8);
 
                         // TODO: improve
                         final StreamMessage message;
@@ -612,7 +630,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                                 created,
                                 type,
                                 jsonMetadata,
-                                result.getString(8)
+                                result.getString(9)
                             );
                         } else {
                             message = new StreamMessage(
@@ -651,13 +669,13 @@ public class SqliteStreamStore extends StreamStoreBase {
                 maxCount >= resultSetCount,
                 ReadDirection.FORWARD,
                 readNextAllPage,
-                messages.toArray(new StreamMessage[messages.size()]));
+                messages.toArray(new StreamMessage[0]));
         }
     }
 
     @Override
     protected ReadAllPage readAllBackwardsInternal(long fromPositionExclusive,
-                                                   int maxCount,
+                                                   long maxCount,
                                                    boolean prefetch,
                                                    ReadNextAllPage readNextAllPage) throws SQLException {
         long ordinal = fromPositionExclusive == Position.END ? Long.MAX_VALUE : fromPositionExclusive;
@@ -667,7 +685,7 @@ public class SqliteStreamStore extends StreamStoreBase {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setLong(1, ordinal);
             // Read extra row to see if at end or not
-            stmt.setInt(2, maxCount == Integer.MAX_VALUE ? maxCount : maxCount + 1);
+            stmt.setLong(2, maxCount == Long.MAX_VALUE ? maxCount : maxCount + 1);
 
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
@@ -737,15 +755,14 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected ReadStreamPage readStreamForwardsInternal(String streamId,
-                                                        int start,
-                                                        int count,
+    protected ReadStreamPage readStreamForwardsInternal(String streamName,
+                                                        long start,
+                                                        long count,
                                                         boolean prefetch,
                                                         ReadNextStreamPage readNext) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
-            SqlStreamId sqlStreamId = new SqlStreamId(streamId);
             return readStreamInternal(
-                sqlStreamId,
+                streamName,
                 start,
                 count,
                 ReadDirection.FORWARD,
@@ -756,15 +773,14 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected ReadStreamPage readStreamBackwardsInternal(String streamId,
-                                                         int start,
-                                                         int count,
+    protected ReadStreamPage readStreamBackwardsInternal(String streamName,
+                                                         long start,
+                                                         long count,
                                                          boolean prefetch,
                                                          ReadNextStreamPage readNext) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
-            SqlStreamId sqlStreamId = new SqlStreamId(streamId);
             return readStreamInternal(
-                sqlStreamId,
+                streamName,
                 start,
                 count,
                 ReadDirection.BACKWARD,
@@ -788,12 +804,11 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected StreamMetadataResult getStreamMetadataInternal(String streamId) throws SQLException {
-        SqlStreamId sqlStreamId = new SqlStreamId(streamId);
+    protected StreamMetadataResult getStreamMetadataInternal(String streamName) throws SQLException {
         ReadStreamPage page;
         try (Connection connection = connectionFactory.openConnection()) {
             page = readStreamInternal(
-                sqlStreamId.getMetadataSqlStreamId(),
+                streamName,
                 StreamVersion.END,
                 1,
                 ReadDirection.BACKWARD,
@@ -803,12 +818,12 @@ public class SqliteStreamStore extends StreamStoreBase {
         }
 
         if (page.getStatus() == PageReadStatus.STREAM_NOT_FOUND) {
-            return new StreamMetadataResult(streamId, -1);
+            return new StreamMetadataResult(streamName, -1);
         }
 
         MetadataMessage metadataMessage = jsonSerializerStrategy.fromJson(page.getMessages()[0].getJsonData(), MetadataMessage.class);
         return new StreamMetadataResult(
-            streamId,
+            streamName,
             page.getLastStreamVersion(),
             metadataMessage.getMaxAge(),
             metadataMessage.getMaxCount(),
@@ -816,11 +831,11 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     // TODO: make async/reactive
-    private void checkStreamMaxCount(String streamId, Integer maxCount) throws SQLException {
+    private void checkStreamMaxCount(String streamId, Long maxCount) throws SQLException {
         if (maxCount != null) {
             Integer count = getStreamMessageCount(streamId);
             if (count > maxCount) {
-                int toPurge = count - maxCount;
+                long toPurge = count - maxCount;
                 ReadStreamPage streamMessagesPage = readStreamForwardsInternal(
                     streamId,
                     StreamVersion.START,
@@ -839,21 +854,21 @@ public class SqliteStreamStore extends StreamStoreBase {
 
 
 
-    private ReadStreamPage readStreamInternal(SqlStreamId sqlStreamId,
-                                              int start,
-                                              int count,
+    private ReadStreamPage readStreamInternal(String streamName,
+                                              long start,
+                                              long count,
                                               ReadDirection direction,
                                               boolean prefetch,
                                               ReadNextStreamPage readNext,
                                               Connection connection) throws SQLException {
 
         // To read backwards from end, need to use int MaxValue
-        int streamVersion = start == StreamVersion.END ? Integer.MAX_VALUE : start;
+        long startVersion = start == StreamVersion.END ? Long.MAX_VALUE : start;
         String commandText;
         GetNextVersion getNextVersion;
         if (direction == ReadDirection.FORWARD) {
             commandText = prefetch ? scripts.readStreamForwardWithData() : scripts.readStreamForward();
-            getNextVersion = (List<StreamMessage> messages, int lastVersion) -> {
+            getNextVersion = (List<StreamMessage> messages, long lastVersion) -> {
                 if (messages != null && !messages.isEmpty()) {
                     return Iterables.getLast(messages).getStreamVersion() + 1;
                 }
@@ -861,7 +876,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             };
         } else {
             commandText = prefetch ? scripts.readStreamBackwardsWithData() : scripts.readStreamBackwards();
-            getNextVersion = (List<StreamMessage> messages, int lastVersion) -> {
+            getNextVersion = (List<StreamMessage> messages, long lastVersion) -> {
                 if (messages != null && !messages.isEmpty()) {
                     return Iterables.getLast(messages).getStreamVersion() - 1;
                 }
@@ -870,7 +885,7 @@ public class SqliteStreamStore extends StreamStoreBase {
         }
 
         PreparedStatement streamLatestStmt = connection.prepareStatement(scripts.getLatestFromStreamByStreamId());
-        streamLatestStmt.setString(1, sqlStreamId.getId());
+        streamLatestStmt.setString(1, streamName);
         ResultSet streamLatest = streamLatestStmt.executeQuery();
         String internalId = null;
         int latestVersion = 0;
@@ -885,13 +900,13 @@ public class SqliteStreamStore extends StreamStoreBase {
             connection.setAutoCommit(false);
 
             stmt.setString(1, internalId);
-            stmt.setInt(2, streamVersion);
-            stmt.setInt(3, count == Integer.MAX_VALUE ? count : count + 1);
+            stmt.setLong(2, startVersion);
+            stmt.setLong(3, count == Long.MAX_VALUE ? count : count + 1);
 
             ResultSet rs = stmt.executeQuery();
             if (!rs.next()) {
                 return new ReadStreamPage(
-                    sqlStreamId.getOriginalId(),
+                    streamName,
                     PageReadStatus.STREAM_NOT_FOUND,
                     start,
                     StreamVersion.END,
@@ -908,7 +923,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             // streamNotFound page
             if (rs.wasNull()) {
                 return new ReadStreamPage(
-                    sqlStreamId.getOriginalId(),
+                    streamName,
                     PageReadStatus.STREAM_NOT_FOUND,
                     start,
                     StreamVersion.END,
@@ -928,38 +943,39 @@ public class SqliteStreamStore extends StreamStoreBase {
 
                 while (result.next()) {
                     if (messages.size() < count) {
-                        int streamVersion1 = result.getInt(1);
-                        long ordinal = result.getLong(2);
-                        UUID messageId = (UUID) result.getObject(3);
+                        int streamId = result.getInt(1);
+                        long version = result.getLong(2);
+                        long position = result.getLong(3);
+                        UUID messageId = (UUID) result.getObject(4);
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = LocalDateTime.parse(result.getString(4));
-                        String type = result.getString(5);
-                        String jsonMetadata = result.getString(6);
+                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
+                        String type = result.getString(6);
+                        String metadata = result.getString(7);
 
                         // TODO: improve
                         final StreamMessage message;
                         if (prefetch) {
                             message = new StreamMessage(
-                                sqlStreamId.getOriginalId(),
+                                streamName,
                                 messageId,
-                                streamVersion1,
-                                ordinal,
+                                version,
+                                position,
                                 created,
                                 type,
-                                jsonMetadata,
-                                result.getString(7)
+                                metadata,
+                                result.getString(8)
                             );
 
                         } else {
                             message = new StreamMessage(
-                                sqlStreamId.getOriginalId(),
+                                streamName,
                                 messageId,
-                                streamVersion1,
-                                ordinal,
+                                version,
+                                position,
                                 created,
                                 type,
-                                jsonMetadata,
-                                () -> getJsonData(sqlStreamId.getOriginalId(), streamVersion)
+                                metadata,
+                                () -> getJsonData(streamName, version)
                             );
                         }
 
@@ -970,7 +986,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             }
 
             return new ReadStreamPage(
-                sqlStreamId.getOriginalId(),
+                streamName,
                 PageReadStatus.SUCCESS,
                 start,
                 getNextVersion.get(messages, lastStreamVersion),
@@ -988,11 +1004,11 @@ public class SqliteStreamStore extends StreamStoreBase {
 
 
     // TODO: make this reactive/async?
-    private String getJsonData(String streamId, int streamVersion) throws SQLException {
+    private String getJsonData(String streamId, long streamVersion) throws SQLException {
         String commandText = scripts.readMessageData();
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setString(1, streamId);
-            stmt.setInt(2, streamVersion);
+            stmt.setLong(2, streamVersion);
 
             try (ResultSet result = stmt.executeQuery()) {
                 return result.next() ? result.getString(1) : null;
@@ -1003,13 +1019,13 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     // TODO: should we just use readHead/getLastMessage???
     private int getStreamVersionOfMessageId(Connection connection,
-                                            SqlStreamId sqlStreamId,
+                                            String streamName,
                                             UUID messageId) throws SQLException {
 
         try (PreparedStatement command = connection.prepareStatement(scripts.getStreamVersionOfMessageId())) {
             connection.setAutoCommit(false);
 
-            command.setString(1, sqlStreamId.getId());
+            command.setString(1, streamName);
             command.setString(2, messageId.toString());
 
             command.execute();

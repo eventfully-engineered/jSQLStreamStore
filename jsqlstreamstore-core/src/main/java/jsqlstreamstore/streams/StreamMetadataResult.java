@@ -2,6 +2,8 @@ package jsqlstreamstore.streams;
 
 import com.google.common.base.MoreObjects;
 
+import java.math.BigInteger;
+
 /**
  * From SqlStreamStore
  *
@@ -12,29 +14,29 @@ public class StreamMetadataResult {
 	 * The stream ID
 	 */
 	private final String streamId;
-	
+
 	/**
 	 * The version of the metadta stream. Can be used for concurrency control
 	 */
-	private final int metadataStreamVersion;
-	
+	private final long metadataStreamVersion;
+
 	private final Integer maxAge;
-	
-	private final Integer maxCount;
-	
+
+	private final Long maxCount;
+
 	private final String metadataJson;
-	
+
     public StreamMetadataResult(String streamId, int metadataStreamVersion) {
         this(streamId, metadataStreamVersion, null);
     }
-	
+
 
 	public StreamMetadataResult(String streamId, int metadataStreamVersion, String metadataJson) {
 	    this(streamId, metadataStreamVersion, null, null, metadataJson);
 	}
-	
+
 	/**
-	 * 
+	 *
 	 * @param streamId The stream ID
 	 * @param metadataStreamVersion The verson of the metadata stream
 	 * @param maxAge The max age of messages in the stream
@@ -42,9 +44,9 @@ public class StreamMetadataResult {
 	 * @param metadataJson Custom metadata serialized as JSON
 	 */
     public StreamMetadataResult(String streamId,
-                                int metadataStreamVersion,
+                                long metadataStreamVersion,
                                 Integer maxAge,
-                                Integer maxCount,
+                                Long maxCount,
                                 String metadataJson) {
         this.streamId = streamId;
         this.metadataStreamVersion = metadataStreamVersion;
@@ -57,22 +59,22 @@ public class StreamMetadataResult {
         return streamId;
     }
 
-    public int getMetadataStreamVersion() {
+    public long getMetadataStreamVersion() {
         return metadataStreamVersion;
     }
 
     public Integer getMaxAge() {
         return maxAge;
     }
-    
-    public Integer getMaxCount() {
+
+    public Long getMaxCount() {
         return maxCount;
     }
 
     public String getMetadataJson() {
         return metadataJson;
     }
-	
+
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)

@@ -58,20 +58,21 @@ public class MetadataMaxAgeCache {
             }
         }
 
-        StreamMetadataResult result = _store.getStreamMetadata(streamId);
-
-        cacheItem = new MaxAgeCacheItem(streamId, utcNow, result.getMaxAge());
-        _byStreamId.putIfAbsent(streamId, cacheItem);
-        _byCacheStamp.add(cacheItem);
-
-        while (_byCacheStamp.size() > _maxSize) {
-            cacheItem = _byCacheStamp.remove();
-            if (cacheItem != null) {
-                _byStreamId.remove(cacheItem.streamId);
-            }
-        }
-
-        return result.getMaxAge();
+//        StreamMetadataResult result = _store.getStreamMetadata(streamId);
+//
+//        cacheItem = new MaxAgeCacheItem(streamId, utcNow, result.getMaxAge());
+//        _byStreamId.putIfAbsent(streamId, cacheItem);
+//        _byCacheStamp.add(cacheItem);
+//
+//        while (_byCacheStamp.size() > _maxSize) {
+//            cacheItem = _byCacheStamp.remove();
+//            if (cacheItem != null) {
+//                _byStreamId.remove(cacheItem.streamId);
+//            }
+//        }
+//
+//        return result.getMaxAge();
+        return null;
     }
 
 
