@@ -67,8 +67,7 @@ class SingleConnectionDataSource implements DataSource {
     }
 
     /**
-     * A wrapper for a {@link Connection} that resists attempts to close its
-     * delegate.
+     * A wrapper for a {@link Connection} that resists attempts to close its delegate.
      */
     static class ConnectionWrapper implements Connection {
 

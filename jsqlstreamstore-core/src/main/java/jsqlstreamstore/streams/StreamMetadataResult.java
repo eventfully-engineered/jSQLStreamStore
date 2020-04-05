@@ -5,7 +5,7 @@ import com.google.common.base.MoreObjects;
 import java.math.BigInteger;
 
 /**
- * From SqlStreamStore
+ *
  *
  */
 public class StreamMetadataResult {
@@ -16,7 +16,7 @@ public class StreamMetadataResult {
 	private final String streamId;
 
 	/**
-	 * The version of the metadta stream. Can be used for concurrency control
+	 * The version of the metadata stream. Can be used for concurrency control
 	 */
 	private final long metadataStreamVersion;
 
@@ -24,7 +24,7 @@ public class StreamMetadataResult {
 
 	private final Long maxCount;
 
-	private final String metadataJson;
+	private final String metadata;
 
     public StreamMetadataResult(String streamId, int metadataStreamVersion) {
         this(streamId, metadataStreamVersion, null);
@@ -41,18 +41,18 @@ public class StreamMetadataResult {
 	 * @param metadataStreamVersion The verson of the metadata stream
 	 * @param maxAge The max age of messages in the stream
 	 * @param maxCount The max count of message in the stream
-	 * @param metadataJson Custom metadata serialized as JSON
+	 * @param metadata Custom metadata serialized as JSON
 	 */
     public StreamMetadataResult(String streamId,
                                 long metadataStreamVersion,
                                 Integer maxAge,
                                 Long maxCount,
-                                String metadataJson) {
+                                String metadata) {
         this.streamId = streamId;
         this.metadataStreamVersion = metadataStreamVersion;
         this.maxAge = maxAge;
         this.maxCount = maxCount;
-        this.metadataJson = metadataJson;
+        this.metadata = metadata;
     }
 
     public String getStreamId() {
@@ -71,8 +71,8 @@ public class StreamMetadataResult {
         return maxCount;
     }
 
-    public String getMetadataJson() {
-        return metadataJson;
+    public String getMetadata() {
+        return metadata;
     }
 
     @Override

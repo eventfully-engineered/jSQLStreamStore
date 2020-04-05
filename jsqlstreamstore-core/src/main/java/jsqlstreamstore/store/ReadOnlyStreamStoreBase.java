@@ -127,11 +127,11 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 		return readHeadPositionInternal();
 	}
 
-//	@Override
-//	public StreamMetadataResult getStreamMetadata(String streamId) throws SQLException {
-//        Preconditions.checkArgument(!streamId.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
-//	    return getStreamMetadataInternal(streamId);
-//	}
+	@Override
+	public StreamMetadataResult getStreamMetadata(String streamName) throws SQLException {
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamName must not start with $ as this is dedicated for internal system streams");
+	    return getStreamMetadataInternal(streamName);
+	}
 
 	@Override
     public StreamSubscription subscribeToStream(String streamName, Integer continueAfterVersion,

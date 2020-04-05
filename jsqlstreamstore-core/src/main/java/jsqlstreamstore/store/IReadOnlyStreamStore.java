@@ -69,11 +69,11 @@ public interface IReadOnlyStreamStore {
 	 */
 	Long readHeadPosition();
 
-//	/**
-//	 * Gets the stream metadata
-//	 * @param streamId The stream ID whose metadata is to be read.
-//	 */
-//	StreamMetadataResult getStreamMetadata(String streamId) throws SQLException;
+	/**
+	 * Gets the stream metadata
+	 * @param streamName The stream name whose metadata is to be read.
+	 */
+	StreamMetadataResult getStreamMetadata(String streamName) throws SQLException;
 
     /**
      *
