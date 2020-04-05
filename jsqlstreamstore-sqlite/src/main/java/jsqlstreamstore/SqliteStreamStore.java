@@ -321,19 +321,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     private ResultSet insert(Connection connection, String streamName, NewStreamMessage newMessages[]) throws SQLException {
         connection.setAutoCommit(false);
-        //        IF NOT EXISTS (SELECT * FROM public.Streams WHERE public.Streams.Id = streamId) THEN
-        //        INSERT INTO public.Streams (Id, IdOriginal) VALUES (streamId, streamIdOriginal);
-        //        END IF;
-
-        // see if stream exists...with one of these options
-        // 1.
-        // INSERT OR IGNORE INTO Streams(Id, IdOriginal) VALUES(streamId, streamIdOriginal)
-// 2.
-//        INSERT INTO Streams(Id, IdOriginal)
-//        SELECT 5, 'text to insert'
-//        WHERE NOT EXISTS(SELECT 1 FROM memos WHERE id = 5 AND text = 'text to insert');
-
-        PreparedStatement insertStreams = connection.prepareStatement("INSERT INTO streams(name) VALUES (?);");
+        PreparedStatement insertStreams = connection.prepareStatement(scripts.insertStream());
         insertStreams.setString(1, streamName);
         int insertStreamsResult = insertStreams.executeUpdate();
         // TODO: check result
@@ -377,10 +365,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             latestStreamVersion = streamVersionQueryResult.getInt(1);
         }
 
-        String updateStreamsSql = "UPDATE streams "
-            + "SET version = ?, position = ? "
-            + "WHERE streams.id = ?";
-        PreparedStatement updateStreamsStmt = connection.prepareStatement(updateStreamsSql);
+        PreparedStatement updateStreamsStmt = connection.prepareStatement(scripts.updateStream());
         updateStreamsStmt.setInt(1, latestStreamVersion);
         updateStreamsStmt.setInt(2, latestStreamPosition);
         updateStreamsStmt.setInt(3, streamIdInternal);
@@ -416,14 +401,13 @@ public class SqliteStreamStore extends StreamStoreBase {
     private void batchInsert(Integer streamInternal, NewStreamMessage[] messages, long latestStreamVersion) throws SQLException {
         // TODO: just use the table default
         LocalDateTime date = LocalDateTime.now(ZoneId.of("UTC"));
-        String sql = "INSERT INTO messages (stream_id, Id, version, created, type, data, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        PreparedStatement ps = connectionFactory.openConnection().prepareStatement(sql);
+        PreparedStatement ps = connectionFactory.openConnection().prepareStatement(scripts.writeMessage());
         final int batchSize = 1000;
         int count = 0;
         for (int i = 0; i < messages.length; i++) {
             NewStreamMessage message = messages[i];
-            ps.setInt(1, streamInternal);
-            ps.setString(2, message.getMessageId().toString());
+            ps.setString(1, message.getMessageId().toString());
+            ps.setInt(2, streamInternal);
             ps.setString(3, String.valueOf(i + 1));
             ps.setString(4, date.toString());
             ps.setString(5, message.getType());
@@ -438,38 +422,6 @@ public class SqliteStreamStore extends StreamStoreBase {
         // TODO: dont need to call if equal to mod batch size
         ps.executeBatch();
         ps.close();
-
-//        Statement batch = connectionFactory.openConnection().createStatement();
-//        DateTime date = DateTime.now();
-//        StringBuilder valuesBuilder = new StringBuilder();
-//        for (int i = 0; i < messages.length; i++) {
-//            if (i != 0) {
-//                valuesBuilder.append(", ");
-//            }
-//            // TODO: joiner probably isnt worth it
-//            NewStreamMessage message = messages[i];
-//            Joiner j = Joiner.on(",");
-//            String s = j.join(
-//                streamInternal,
-//                quoteWrap(message.getMessageId().toString()),
-//                String.valueOf(i + 1),
-//                quoteWrap(date.toString()),
-//                quoteWrap(message.getType()),
-//                quoteWrap(StringEscapeUtils.escapeJson(message.getJsonData())),
-//                quoteWrap(StringEscapeUtils.escapeJson(message.getJsonMetadata()))
-//            );
-//
-//
-//            // valuesBuilder.append("(").append(s).append(")");
-//            valuesBuilder.append("(?, ?, ?, ?, ?, ?, ?)");
-//        }
-//
-//        // TODO: compare with adding inserts to batch
-//
-//        boolean result = batch.execute("INSERT INTO Messages (StreamIdInternal, Id, StreamVersion, Created, Type, JsonData, JsonMetadata) VALUES " + valuesBuilder);
-//
-
-        // TODO: do something with result
     }
 
     private static String quoteWrap(String s) {
@@ -623,7 +575,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                         final StreamMessage message;
                         if (prefetch) {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
@@ -634,7 +586,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                             );
                         } else {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
@@ -1036,36 +988,4 @@ public class SqliteStreamStore extends StreamStoreBase {
             }
         }
     }
-
-
-
-
-//    /**
-//     * SQL-escape a string.
-//     */
-//    public static String sqlEscapeString(String value) {
-//        StringBuilder escaper = new StringBuilder();
-//
-//        DatabaseUtils.appendEscapedSQLString(escaper, value);
-//
-//        return escaper.toString();
-//    }
-//
-//    public static void appendEscapedSQLString(StringBuilder sb, String sqlString) {
-//        sb.append('\'');
-//        if (sqlString.indexOf('\'') != -1) {
-//            int length = sqlString.length();
-//            for (int i = 0; i < length; i++) {
-//                char c = sqlString.charAt(i);
-//                if (c == '\'') {
-//                    sb.append('\'');
-//                }
-//                sb.append(c);
-//            }
-//        } else
-//            sb.append(sqlString);
-//        sb.append('\'');
-//    }
-
-
 }

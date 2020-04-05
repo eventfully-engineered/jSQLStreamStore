@@ -714,10 +714,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
     }
 
-    private void deleteStreamAnyVersion(
-        // SqlStreamId sqlStreamId
-        String streamName
-    ) throws SQLException {
+    private void deleteStreamAnyVersion(String streamName) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
             deleteStreamAnyVersion(connection, streamName);
@@ -727,10 +724,7 @@ public class PostgresStreamStore extends StreamStoreBase {
         }
     }
 
-    private void deleteStreamAnyVersion(Connection connection,
-                                        // SqlStreamId sqlStreamId
-                                        String streamName
-    ) throws SQLException {
+    private void deleteStreamAnyVersion(Connection connection, String streamName) throws SQLException {
 
         boolean aStreamIsDeleted;
         try (CallableStatement stmt = connection.prepareCall(scripts.deleteStreamAnyVersion())) {

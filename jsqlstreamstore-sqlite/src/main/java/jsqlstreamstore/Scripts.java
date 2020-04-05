@@ -49,6 +49,10 @@ public final class Scripts {
         return getScript("GetInternalStreamId");
     }
 
+    public String insertStream() {
+        return getScript("InsertStream");
+    }
+
     public String readHeadPosition() {
         return getScript("ReadHeadPosition");
     }
@@ -99,6 +103,14 @@ public final class Scripts {
 
     public String deleteStreamAnyVersion() {
         return getScript("DeleteStreamAnyVersion");
+    }
+
+    public String updateStream() {
+        return getScript("UpdateStream");
+    }
+
+    public String writeMessage() {
+        return getScript("WriteMessage");
     }
 
     private String getScript(String name) {
