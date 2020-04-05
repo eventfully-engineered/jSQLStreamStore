@@ -328,14 +328,14 @@ class PostgresStreamStoreTest {
 
 
     public static NewStreamMessage[] createNewStreamMessages(int... messageNumbers) {
-        return createNewStreamMessages("\"data\"", messageNumbers);
+        return createNewStreamMessages("{\"message\": \"hello\"}", messageNumbers);
     }
 
     public static NewStreamMessage[] createNewStreamMessages(String jsonData, int[] messageNumbers) {
         NewStreamMessage[] newMessages = new NewStreamMessage[messageNumbers.length];
         for (int i = 0; i < messageNumbers.length; i++) {
             UUID id = UUID.fromString(StringUtils.leftPad("00000000-0000-0000-0000-" + String.valueOf(messageNumbers[i]), 12, "0"));
-            newMessages[i] = new NewStreamMessage(id, "type", jsonData, "\"metadata\"");
+            newMessages[i] = new NewStreamMessage(id, "type", jsonData, "{\"foo\": \"baz\"}");
         }
         return newMessages;
     }
