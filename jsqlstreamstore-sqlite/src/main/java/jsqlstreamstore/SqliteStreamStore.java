@@ -484,24 +484,22 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected void deleteMessageInternal(String streamId, UUID messageId) throws SQLException {
+    protected void deleteMessageInternal(String streamName, UUID messageId) throws SQLException {
         // TODO: could we batch the delete and inserts?
         // TODO: SQLStreamStore also does this via a taskqueue
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
 
-            String internalStreamId = getInternalStreamId(streamId);
+            String internalStreamId = getInternalStreamId(streamName);
             // TODO: handle null
 
             try (PreparedStatement stmt = connection.prepareStatement(scripts.deleteStreamMessage())) {
-                SqlStreamId sqlStreamId = new SqlStreamId(streamId);
-
                 stmt.setString(1, internalStreamId);
                 stmt.setObject(2, messageId);
 
                 stmt.execute();
                 if (stmt.getUpdateCount() == 1) {
-                    NewStreamMessage deletedMessage = Deleted.createMessageDeletedMessage(sqlStreamId.getOriginalId(), messageId);
+                    NewStreamMessage deletedMessage = Deleted.createMessageDeletedMessage(streamName, messageId);
                     appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { deletedMessage });
                 }
             }
@@ -509,21 +507,20 @@ public class SqliteStreamStore extends StreamStoreBase {
         }
     }
 
-    private String getInternalStreamId(String streamId) throws SQLException {
+    private String getInternalStreamId(String streamName) throws SQLException {
         // TODO: could we batch the delete and inserts?
         // TODO: SQLStreamStore also does this via a taskqueue
         try (Connection connection = connectionFactory.openConnection()) {
             try (PreparedStatement stmt = connection.prepareStatement(scripts.getInternalStreamId())) {
-                SqlStreamId sqlStreamId = new SqlStreamId(streamId);
 
-                stmt.setString(1, sqlStreamId.getId());
+                stmt.setString(1, streamName);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getString(1);
+                    }
 
-                ResultSet rs = stmt.executeQuery();
-                if (rs.next()) {
-                    return rs.getString(1);
+                    return null;
                 }
-
-                return null;
             }
         }
     }
