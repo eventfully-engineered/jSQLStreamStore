@@ -101,8 +101,12 @@ public final class Scripts {
         return getScript("DeleteStreamMessage");
     }
 
-    public String deleteStreamAnyVersion() {
-        return getScript("DeleteStreamAnyVersion");
+    public String deleteStream() {
+        return getScript("DeleteStream");
+    }
+
+    public String deleteStreamMessages() {
+        return getScript("DeleteStreamMessages");
     }
 
     public String updateStream() {

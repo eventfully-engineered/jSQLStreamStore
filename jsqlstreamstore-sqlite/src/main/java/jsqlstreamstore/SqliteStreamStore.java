@@ -456,20 +456,24 @@ public class SqliteStreamStore extends StreamStoreBase {
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
             deleteStreamAnyVersion(connection, streamName);
-            // Delete metadata stream (if it exists)
-            deleteStreamAnyVersion(connection, streamName);
             connection.commit();
         }
     }
 
     private void deleteStreamAnyVersion(Connection connection, String streamName) throws SQLException {
-
         boolean aStreamIsDeleted;
-        try (CallableStatement stmt = connection.prepareCall(scripts.deleteStreamAnyVersion())) {
-            stmt.setString(1, streamName);
-            int count = stmt.executeUpdate();
+        try (PreparedStatement deleteStreamStmt = connection.prepareStatement(scripts.deleteStream());
+             PreparedStatement deleteStreamMessages = connection.prepareStatement(scripts.deleteStreamMessages())) {
 
+            deleteStreamStmt.setString(1, streamName);
+            int count = deleteStreamStmt.executeUpdate();
             aStreamIsDeleted = count > 0;
+
+            deleteStreamMessages.setString(1, streamName);
+            int deleteCount = deleteStreamMessages.executeUpdate();
+        } catch (Exception ex) {
+            connection.rollback();
+            throw ex;
         }
 
         if (aStreamIsDeleted) {

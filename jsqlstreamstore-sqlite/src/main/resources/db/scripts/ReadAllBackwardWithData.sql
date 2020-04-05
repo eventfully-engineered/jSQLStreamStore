@@ -7,9 +7,9 @@ SELECT
 	messages.created,
 	messages.type,
 	messages.metadata,
-    Messages.data
+    messages.data
 FROM messages
-INNER JOIN streams ON Messages.stream_id = streams.id
-WHERE messages.Position <= ?
-ORDER BY messages.Position DESC
+INNER JOIN streams ON messages.stream_id = streams.id
+WHERE messages.position <= ?
+ORDER BY messages.position DESC
 LIMIT ?;
