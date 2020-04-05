@@ -3,7 +3,6 @@ package jsqlstreamstore;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
-import jsqlstreamstore.common.ResultSets;
 import jsqlstreamstore.infrastructure.Empty;
 import jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
 import jsqlstreamstore.store.ConnectionFactory;
@@ -62,7 +61,8 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     @Override
     protected int getStreamMessageCount(String streamName) throws SQLException {
-        try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(scripts.getStreamMessageCount())) {
+        try (Connection connection = connectionFactory.openConnection();
+             PreparedStatement stmt = connection.prepareStatement(scripts.getStreamMessageCount())) {
             stmt.setString(1, streamName);
             try (ResultSet result = stmt.executeQuery()) {
                 result.next();
@@ -485,13 +485,13 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     @Override
     protected void deleteMessageInternal(String streamName, UUID messageId) throws SQLException {
-        // TODO: could we batch the delete and inserts?
-        // TODO: SQLStreamStore also does this via a taskqueue
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
 
             String internalStreamId = getInternalStreamId(streamName);
-            // TODO: handle null
+            if (internalStreamId == null) {
+                throw new StreamNotFoundException(streamName);
+            }
 
             try (PreparedStatement stmt = connection.prepareStatement(scripts.deleteStreamMessage())) {
                 stmt.setString(1, internalStreamId);
@@ -508,11 +508,8 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     private String getInternalStreamId(String streamName) throws SQLException {
-        // TODO: could we batch the delete and inserts?
-        // TODO: SQLStreamStore also does this via a taskqueue
         try (Connection connection = connectionFactory.openConnection()) {
             try (PreparedStatement stmt = connection.prepareStatement(scripts.getInternalStreamId())) {
-
                 stmt.setString(1, streamName);
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
@@ -847,8 +844,6 @@ public class SqliteStreamStore extends StreamStoreBase {
         }
 
         try (PreparedStatement stmt = connection.prepareStatement(commandText)) {
-            connection.setAutoCommit(false);
-
             stmt.setString(1, internalId);
             stmt.setLong(2, startVersion);
             stmt.setLong(3, count == Long.MAX_VALUE ? count : count + 1);
@@ -951,12 +946,11 @@ public class SqliteStreamStore extends StreamStoreBase {
                                             UUID messageId) throws SQLException {
 
         try (PreparedStatement command = connection.prepareStatement(scripts.getStreamVersionOfMessageId())) {
-            connection.setAutoCommit(false);
-
             command.setString(1, streamName);
             command.setString(2, messageId.toString());
 
             command.execute();
+            // TODO: check result
 
             try (ResultSet rs = command.getResultSet()) {
                 rs.next();
