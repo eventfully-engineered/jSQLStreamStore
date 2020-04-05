@@ -346,11 +346,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             latestStreamVersion = streamVersionQueryResult.getInt(1);
         }
 
-        PreparedStatement updateStreamsStmt = connection.prepareStatement(scripts.updateStream());
-        updateStreamsStmt.setInt(1, latestStreamVersion);
-        updateStreamsStmt.setInt(2, latestStreamPosition);
-        updateStreamsStmt.setInt(3, streamIdInternal);
-        updateStreamsStmt.executeUpdate();
+        updateStream(connection, streamIdInternal, latestStreamVersion, latestStreamPosition);
 
         // TODO: make compatible with postgres
         String selectLastMessageSql = "SELECT data, metadata, version, position "
@@ -361,6 +357,7 @@ public class SqliteStreamStore extends StreamStoreBase {
         PreparedStatement selectLastMessageStmt = connection.prepareStatement(selectLastMessageSql);
         selectLastMessageStmt.setInt(1, streamIdInternal);
 
+        // TODO: move commit up?
         connection.commit();
 
         return selectLastMessageStmt.executeQuery();
@@ -947,6 +944,16 @@ public class SqliteStreamStore extends StreamStoreBase {
                 ResultSets.getLong(rs, 5)
             );
 
+        }
+    }
+
+    // TODO: same as updating metadata?
+    private void updateStream(Connection connection, int streamId, long version, long position) throws SQLException {
+        try (PreparedStatement updateStreamsStmt = connection.prepareStatement(scripts.updateStream())) {
+            updateStreamsStmt.setLong(1, version);
+            updateStreamsStmt.setLong(2, position);
+            updateStreamsStmt.setInt(3, streamId);
+            updateStreamsStmt.executeUpdate();
         }
     }
 
