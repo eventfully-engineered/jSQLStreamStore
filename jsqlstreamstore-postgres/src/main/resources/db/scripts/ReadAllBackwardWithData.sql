@@ -7,9 +7,9 @@ SELECT
 	public.messages.created,
 	public.messages.type,
 	public.messages.metadata,
-    public.Messages.data
+    public.messages.data
 FROM public.messages
-INNER JOIN public.streams ON public.Messages.stream_id = public.streams.id
+INNER JOIN public.streams ON public.messages.stream_id = public.streams.id
 WHERE public.messages.position <= ?
 ORDER BY public.messages.position DESC
 LIMIT ?;

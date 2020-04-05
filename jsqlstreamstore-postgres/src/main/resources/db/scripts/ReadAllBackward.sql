@@ -9,6 +9,6 @@ SELECT
 	public.messages.metadata
 FROM public.messages
 INNER JOIN public.streams ON public.messages.stream_id = public.streams.id
-WHERE public.messages.Position <= ?
-ORDER BY public.messages.Position DESC
+WHERE public.messages.position <= ?
+ORDER BY public.messages.position DESC
 LIMIT ?;
