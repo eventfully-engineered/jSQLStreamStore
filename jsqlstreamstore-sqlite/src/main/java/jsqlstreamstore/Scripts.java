@@ -2,8 +2,6 @@ package jsqlstreamstore;
 
 import jsqlstreamstore.common.InputStreams;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,10 +19,6 @@ public final class Scripts {
     public Scripts() {
     }
 
-    public String getLatestFromStreamByStreamId() {
-        return getScript("GetLatestFromStreamByStreamId");
-    }
-
     public String getAppendStreamExpectedVersionAny() {
         return getScript("AppendStreamExpectedVersionAny");
     }
@@ -37,16 +31,16 @@ public final class Scripts {
         return getScript("AppendStreamExpectedVersionNoStream");
     }
 
+    public String getStreamDetails() {
+        return getScript("GetStreamDetails");
+    }
+
     public String getStreamMessageCount() {
         return getScript("GetStreamMessageCount");
     }
 
     public String getStreamVersionOfMessageId() {
         return getScript("GetStreamVersionOfMessageId");
-    }
-
-    public String getInternalStreamId() {
-        return getScript("GetInternalStreamId");
     }
 
     public String insertStream() {
