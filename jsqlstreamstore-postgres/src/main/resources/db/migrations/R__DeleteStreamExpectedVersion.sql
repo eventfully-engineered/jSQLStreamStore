@@ -12,7 +12,7 @@ BEGIN
 	SELECT public.streams.id
 	INTO _stream_id
     FROM public.streams
-    WHERE public.streams.Id = stream_name;
+    WHERE public.streams.id = stream_name;
 
 	IF _stream_id IS NULL THEN
 		RAISE EXCEPTION 'WrongExpectedVersion' USING HINT = 'stream id was null';

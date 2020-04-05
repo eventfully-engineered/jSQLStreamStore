@@ -17,7 +17,7 @@ BEGIN
     WHERE public.messages.stream_id = _stream_id;
 
     DELETE FROM public.streams
-    WHERE public.streams.Id = _stream_id;
+    WHERE public.streams.id = _stream_id;
     GET DIAGNOSTICS _count = ROW_COUNT;
 
     RETURN _count;
