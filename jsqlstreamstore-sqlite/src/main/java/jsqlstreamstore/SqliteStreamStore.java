@@ -18,6 +18,7 @@ import jsqlstreamstore.subscriptions.StreamSubscription;
 import jsqlstreamstore.subscriptions.SubscriptionDropped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sqlite.SQLiteException;
 
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -33,6 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+
+import static org.sqlite.SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE;
 
 // TODO: set PreparedStatement fetchSize?
 // TODO: catch stream name to stream id to avoid query if needed
@@ -129,10 +132,12 @@ public class SqliteStreamStore extends StreamStoreBase {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        try (ResultSet rs = insert(connection, streamName, messages)) {
-            rs.next();
-            // TODO: get max count
-            return new AppendResult(null, rs.getInt(2), rs.getInt(3));
+        try {
+            try (ResultSet rs = insert(connection, streamName, messages)) {
+                rs.next();
+                // TODO: get max count
+                return new AppendResult(null, rs.getInt(2), rs.getInt(3));
+            }
         } catch (SQLException ex) {
             // TODO: review this
             connection.rollback();
@@ -196,9 +201,11 @@ public class SqliteStreamStore extends StreamStoreBase {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        try (ResultSet rs = insert(connection, streamName, messages)) {
-            rs.next();
-            return new AppendResult(null, rs.getInt(3), rs.getInt(4));
+        try {
+            try (ResultSet rs = insert(connection, streamName, messages)) {
+                rs.next();
+                return new AppendResult(null, rs.getInt(3), rs.getInt(4));
+            }
         } catch (SQLException ex) {
             // Should we catch a PGSqlException instead?
             // might be better to use idempotent write in sql script such as SqlStreamStore postgres
@@ -208,6 +215,39 @@ public class SqliteStreamStore extends StreamStoreBase {
             // SQLIntegrityConstraintViolationException
             // 23505
             // ix_streams_id
+
+            if (ex instanceof SQLiteException) {
+                SQLiteException sqLiteException = (SQLiteException) ex;
+                if (SQLITE_CONSTRAINT_UNIQUE == sqLiteException.getResultCode())    {
+                    ReadStreamPage page = readStreamInternal(
+                        streamName,
+                        StreamVersion.START,
+                        messages.length,
+                        ReadDirection.FORWARD,
+                        false,
+                        null,
+                        connection);
+
+                    if (messages.length > page.getMessages().length) {
+                        throw new WrongExpectedVersion(
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
+                            ex);
+                    }
+
+                    for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
+                        if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
+                            throw new WrongExpectedVersion(
+                                ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
+                                ex);
+                        }
+                    }
+                    return new AppendResult(
+                        null,
+                        page.getLastStreamVersion(),
+                        page.getLastStreamPosition());
+                }
+            }
+
 
             // TODO: this doesnt appear to work
             if (ex instanceof SQLIntegrityConstraintViolationException) {
@@ -266,18 +306,21 @@ public class SqliteStreamStore extends StreamStoreBase {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        try (ResultSet rs = insert(connection, streamName, messages)) {
-            rs.next();
+        try {
+            // TODO: insert should probably return appendresult
+            try (ResultSet rs = insert(connection, streamName, messages)) {
+                rs.next();
 
-            MetadataMessage streamMetadataMessage = rs.getString(1) == null
-                ? null
-                : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
-            Long maxCount = streamMetadataMessage == null
-                ? null
-                : streamMetadataMessage.getMaxCount();
+                MetadataMessage streamMetadataMessage = rs.getString(1) == null
+                    ? null
+                    : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
+                Long maxCount = streamMetadataMessage == null
+                    ? null
+                    : streamMetadataMessage.getMaxCount();
 
-            return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
-        } catch (SQLException ex) {
+                return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
+            }
+        } catch (SQLiteException ex) {
             connection.rollback();
             // Should we catch a PGSqlException instead?
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L372
@@ -310,12 +353,12 @@ public class SqliteStreamStore extends StreamStoreBase {
                     page.getLastStreamPosition());
             }
 
-            // TODO: fix this...this
-            if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
-                    ex);
-            }
+//            // TODO: fix this...this
+//            if (ex instanceof SQLIntegrityConstraintViolationException) {
+//                throw new WrongExpectedVersion(
+//                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
+//                    ex);
+//            }
 
             // throw ex;
             throw new RuntimeException("sql exception occurred", ex);
