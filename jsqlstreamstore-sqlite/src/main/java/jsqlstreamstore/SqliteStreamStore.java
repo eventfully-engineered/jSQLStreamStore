@@ -25,7 +25,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -141,53 +140,39 @@ public class SqliteStreamStore extends StreamStoreBase {
         } catch (SQLException ex) {
             // TODO: review this
             connection.rollback();
-            // Should we catch a PGSqlException instead?
-            // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L177
-            // SQLIntegrityConstraintViolationException
-            // TODO: fix thix. should be contains but SqlCode might be better????
-            if ("IX_Messages_StreamIdInternal_Id".equals(ex.getMessage())) {
-                int streamVersion = getStreamVersionOfMessageId(
-                    connection,
-                    streamName,
-                    messages[0].getMessageId());
+            if (ex instanceof SQLiteException) {
+                SQLiteException sqLiteException = (SQLiteException) ex;
+                if (SQLITE_CONSTRAINT_UNIQUE == sqLiteException.getResultCode())    {
+                    ReadStreamPage page = readStreamInternal(
+                        streamName,
+                        StreamVersion.START,
+                        messages.length,
+                        ReadDirection.FORWARD,
+                        false,
+                        null,
+                        connection);
 
-                ReadStreamPage page = readStreamInternal(
-                    streamName,
-                    streamVersion,
-                    messages.length,
-                    ReadDirection.FORWARD,
-                    false,
-                    null,
-                    connection);
-
-                if (messages.length > page.getMessages().length) {
-                    throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
-                        ex);
-                }
-
-                for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                    if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
+                    if (messages.length > page.getMessages().length) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                             ex);
                     }
+
+                    for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
+                        if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
+                            throw new WrongExpectedVersion(
+                                ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
+                                ex);
+                        }
+                    }
+                    return new AppendResult(
+                        null,
+                        page.getLastStreamVersion(),
+                        page.getLastStreamPosition());
                 }
-                return new AppendResult(
-                    null,
-                    page.getLastStreamVersion(),
-                    page.getLastStreamPosition());
             }
 
-            // TODO: fix this....doesn't seem to work. check docs
-            if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
-                    ex);
-            }
-
-            // throw ex;
-            throw new RuntimeException("sql exception occurred", ex);
+            throw ex;
         }
 
     }
@@ -195,6 +180,8 @@ public class SqliteStreamStore extends StreamStoreBase {
     private AppendResult appendToStreamExpectedVersionNoStream(Connection connection,
                                                                String streamName,
                                                                NewStreamMessage[] messages) throws SQLException {
+
+        // TODO: check expected version
 
         // TODO: is this how we want to handle this?
         if (messages == null || messages.length == 0) {
@@ -207,14 +194,8 @@ public class SqliteStreamStore extends StreamStoreBase {
                 return new AppendResult(null, rs.getInt(3), rs.getInt(4));
             }
         } catch (SQLException ex) {
-            // Should we catch a PGSqlException instead?
             // might be better to use idempotent write in sql script such as SqlStreamStore postgres
             connection.rollback();
-
-            // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L177
-            // SQLIntegrityConstraintViolationException
-            // 23505
-            // ix_streams_id
 
             if (ex instanceof SQLiteException) {
                 SQLiteException sqLiteException = (SQLiteException) ex;
@@ -248,50 +229,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                 }
             }
 
-
-            // TODO: this doesnt appear to work
-            if (ex instanceof SQLIntegrityConstraintViolationException) {
-                LOG.error("integrity constraint violation");
-            }
-
-            if ("23505".equals(ex.getSQLState())) {
-                ReadStreamPage page = readStreamInternal(
-                    streamName,
-                    StreamVersion.START,
-                    messages.length,
-                    ReadDirection.FORWARD,
-                    false,
-                    null,
-                    connection);
-
-                if (messages.length > page.getMessages().length) {
-                    throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                        ex);
-                }
-
-                for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                    if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                            ex);
-                    }
-                }
-                return new AppendResult(
-                    null,
-                    page.getLastStreamVersion(),
-                    page.getLastStreamPosition());
-            }
-
-            // TODO: fix this....doesn't seem to work. check docs
-            if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                    ex);
-            }
-
-            // throw ex;
-            throw new RuntimeException("sql exception occurred", ex);
+            throw ex;
         }
 
     }
@@ -300,6 +238,8 @@ public class SqliteStreamStore extends StreamStoreBase {
                                                        String streamName,
                                                        long expectedVersion,
                                                        NewStreamMessage[] messages) throws SQLException {
+
+        // TODO: check expected version
 
         // TODO: is this how we want to handle this?
         if (messages == null || messages.length == 0) {
@@ -320,48 +260,41 @@ public class SqliteStreamStore extends StreamStoreBase {
 
                 return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
             }
-        } catch (SQLiteException ex) {
+        } catch (SQLException ex) {
             connection.rollback();
-            // Should we catch a PGSqlException instead?
-            // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L372
-            if ("WrongExpectedVersion".equals(ex.getMessage())) {
-                ReadStreamPage page = readStreamInternal(
-                    streamName,
-                    expectedVersion + 1,
-                    messages.length,
-                    ReadDirection.FORWARD,
-                    false,
-                    null,
-                    connection);
+            if (ex instanceof SQLiteException) {
+                SQLiteException sqLiteException = (SQLiteException) ex;
+                if (SQLITE_CONSTRAINT_UNIQUE == sqLiteException.getResultCode())    {
+                    ReadStreamPage page = readStreamInternal(
+                        streamName,
+                        StreamVersion.START,
+                        messages.length,
+                        ReadDirection.FORWARD,
+                        false,
+                        null,
+                        connection);
 
-                if (messages.length > page.getMessages().length) {
-                    throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
-                        ex);
-                }
-
-                for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                    if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
+                    if (messages.length > page.getMessages().length) {
                         throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
+                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
                             ex);
                     }
+
+                    for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
+                        if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
+                            throw new WrongExpectedVersion(
+                                ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
+                                ex);
+                        }
+                    }
+                    return new AppendResult(
+                        null,
+                        page.getLastStreamVersion(),
+                        page.getLastStreamPosition());
                 }
-                return new AppendResult(
-                    null,
-                    page.getLastStreamVersion(),
-                    page.getLastStreamPosition());
             }
 
-//            // TODO: fix this...this
-//            if (ex instanceof SQLIntegrityConstraintViolationException) {
-//                throw new WrongExpectedVersion(
-//                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
-//                    ex);
-//            }
-
-            // throw ex;
-            throw new RuntimeException("sql exception occurred", ex);
+            throw ex;
         }
 
     }
@@ -398,7 +331,7 @@ public class SqliteStreamStore extends StreamStoreBase {
         }
 
         // Then insert...
-        batchInsert(streamIdInternal, newMessages, latestStreamVersionNewMessages);
+        batchInsert(connection, streamIdInternal, newMessages, latestStreamVersionNewMessages);
 
         String streamVersion = "SELECT version, position "
             + "FROM messages "
@@ -433,43 +366,34 @@ public class SqliteStreamStore extends StreamStoreBase {
         return selectLastMessageStmt.executeQuery();
     }
 
-    private class InsertResult {
-        private String jsonData;
-        private int currentVersion;
-        private int currentPosition;
-
-        public InsertResult(String jsonData, int currentVersion, int currentPosition) {
-            this.jsonData = jsonData;
-            this.currentVersion = currentVersion;
-            this.currentPosition = currentPosition;
-        }
-    }
-
-
-    private void batchInsert(Integer streamInternal, NewStreamMessage[] messages, long latestStreamVersion) throws SQLException {
+    private void batchInsert(Connection connection,
+                             Integer streamId,
+                             NewStreamMessage[] messages,
+                             long latestStreamVersion) throws SQLException {
+        // TODO: configurable batch size?
+        final int batchSize = 1000;
         // TODO: just use the table default
         LocalDateTime date = LocalDateTime.now(ZoneId.of("UTC"));
-        PreparedStatement ps = connectionFactory.openConnection().prepareStatement(scripts.writeMessage());
-        final int batchSize = 1000;
-        int count = 0;
-        for (int i = 0; i < messages.length; i++) {
-            NewStreamMessage message = messages[i];
-            ps.setString(1, message.getMessageId().toString());
-            ps.setInt(2, streamInternal);
-            ps.setInt(3, i + 1);
-            ps.setString(4, DateTimeFormatter.ISO_DATE_TIME.format(date));
-            ps.setString(5, message.getType());
-            ps.setString(6, message.getData());
-            ps.setString(7, message.getMetadata());
-            ps.addBatch();
+        try (PreparedStatement ps = connection.prepareStatement(scripts.writeMessage())) {
+            int count = 0;
+            for (int i = 0; i < messages.length; i++) {
+                NewStreamMessage message = messages[i];
+                ps.setObject(1, message.getMessageId());
+                ps.setInt(2, streamId);
+                ps.setInt(3, i + 1);
+                ps.setString(4, DateTimeFormatter.ISO_DATE_TIME.format(date));
+                ps.setString(5, message.getType());
+                ps.setString(6, message.getData());
+                ps.setString(7, message.getMetadata());
+                ps.addBatch();
 
-            if (++count % batchSize == 0) {
-                ps.executeBatch();
+                if (++count % batchSize == 0) {
+                    ps.executeBatch();
+                }
             }
+            // TODO: dont need to call if equal to mod batch size
+            ps.executeBatch();
         }
-        // TODO: dont need to call if equal to mod batch size
-        ps.executeBatch();
-        ps.close();
     }
 
     private static String quoteWrap(String s) {
