@@ -28,6 +28,7 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -126,13 +127,8 @@ public class SqliteStreamStore extends StreamStoreBase {
 
         try (ResultSet rs = insert(connection, streamName, messages)) {
             rs.next();
-            MetadataMessage streamMetadataMessage = rs.getString(1) == null
-                ? null
-                : jsonSerializerStrategy.fromJson(rs.getString(1), MetadataMessage.class);
-
-            Long maxCount = streamMetadataMessage == null ? null : streamMetadataMessage.getMaxCount();
-
-            return new AppendResult(maxCount, rs.getInt(2), rs.getInt(3));
+            // TODO: get max count
+            return new AppendResult(null, rs.getInt(2), rs.getInt(3));
         } catch (SQLException ex) {
             // TODO: review this
             connection.rollback();
@@ -409,7 +405,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             ps.setString(1, message.getMessageId().toString());
             ps.setInt(2, streamInternal);
             ps.setString(3, String.valueOf(i + 1));
-            ps.setString(4, date.toString());
+            ps.setString(4, DateTimeFormatter.ISO_DATE_TIME.format(date));
             ps.setString(5, message.getType());
             ps.setString(6, message.getData());
             ps.setString(7, message.getMetadata());
@@ -561,7 +557,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
                     if (messages.size() < maxCount) {
-                        String streamId = result.getString(1);
+                        int streamId = result.getInt(1);
                         String streamName = result.getString(2);
                         int streamVersion = result.getInt(3);
                         ordinal = result.getLong(4);
@@ -643,31 +639,32 @@ public class SqliteStreamStore extends StreamStoreBase {
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
                     if (messages.size() < maxCount) {
-                        String streamId = result.getString(1);
-                        int streamVersion = result.getInt(2);
-                        ordinal = result.getLong(3);
-                        UUID messageId = (UUID) result.getObject(4);
+                        int streamId = result.getInt(1);
+                        String streamName = result.getString(2);
+                        int streamVersion = result.getInt(3);
+                        ordinal = result.getLong(4);
+                        UUID messageId = UUID.fromString(result.getString(5));
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = LocalDateTime.parse(result.getString(5));
-                        String type = result.getString(6);
-                        String jsonMetadata = result.getString(7);
+                        LocalDateTime created = LocalDateTime.parse(result.getString(6));
+                        String type = result.getString(7);
+                        String jsonMetadata = result.getString(8);
 
                         // TODO: improve
                         final StreamMessage message;
                         if (prefetch) {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
                                 created,
                                 type,
                                 jsonMetadata,
-                                result.getString(8)
+                                result.getString(9)
                             );
                         } else {
                             message = new StreamMessage(
-                                streamId,
+                                streamName,
                                 messageId,
                                 streamVersion,
                                 ordinal,
@@ -855,52 +852,17 @@ public class SqliteStreamStore extends StreamStoreBase {
             stmt.setLong(2, startVersion);
             stmt.setLong(3, count == Long.MAX_VALUE ? count : count + 1);
 
-            ResultSet rs = stmt.executeQuery();
-            if (!rs.next()) {
-                return new ReadStreamPage(
-                    streamName,
-                    PageReadStatus.STREAM_NOT_FOUND,
-                    start,
-                    StreamVersion.END,
-                    StreamVersion.END,
-                    Position.END,
-                    direction,
-                    true,
-                    readNext
-                );
-            }
-
-
-            int lastStreamVersion = rs.getInt(1);
-            // streamNotFound page
-            if (rs.wasNull()) {
-                return new ReadStreamPage(
-                    streamName,
-                    PageReadStatus.STREAM_NOT_FOUND,
-                    start,
-                    StreamVersion.END,
-                    StreamVersion.END,
-                    Position.END,
-                    direction,
-                    true,
-                    readNext
-                );
-
-            }
-            long lastStreamPosition = rs.getLong(2);
-
             int resultSetCount = 0;
             List<StreamMessage> messages = new ArrayList<>();
-            try (ResultSet result = (ResultSet) rs.getObject(3)) {
-
+            try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
                     if (messages.size() < count) {
                         int streamId = result.getInt(1);
                         long version = result.getLong(2);
                         long position = result.getLong(3);
-                        UUID messageId = (UUID) result.getObject(4);
+                        UUID messageId = UUID.fromString(result.getString(4));
                         // TODO: I dont think we need or want this
-                        LocalDateTime created = ResultSets.toLocalDateTime(result.getTimestamp(5));
+                        LocalDateTime created = LocalDateTime.from(DateTimeFormatter.ISO_DATE_TIME.parse(result.getString(5)));
                         String type = result.getString(6);
                         String metadata = result.getString(7);
 
@@ -927,7 +889,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                                 created,
                                 type,
                                 metadata,
-                                () -> getJsonData(streamName, version)
+                                () -> getJsonData(streamId, version)
                             );
                         }
 
@@ -936,14 +898,27 @@ public class SqliteStreamStore extends StreamStoreBase {
                     resultSetCount = result.getRow();
                 }
             }
+            if (messages.isEmpty()) {
+                return new ReadStreamPage(
+                    streamName,
+                    PageReadStatus.STREAM_NOT_FOUND,
+                    start,
+                    StreamVersion.END,
+                    StreamVersion.END,
+                    Position.END,
+                    direction,
+                    true,
+                    readNext
+                );
+            }
 
             return new ReadStreamPage(
                 streamName,
                 PageReadStatus.SUCCESS,
                 start,
-                getNextVersion.get(messages, lastStreamVersion),
-                lastStreamVersion,
-                lastStreamPosition,
+                getNextVersion.get(messages, latestVersion),
+                latestVersion,
+                latestPosition,
                 direction,
                 count >= resultSetCount,
                 readNext,
@@ -956,10 +931,10 @@ public class SqliteStreamStore extends StreamStoreBase {
 
 
     // TODO: make this reactive/async?
-    private String getJsonData(String streamId, long streamVersion) throws SQLException {
+    private String getJsonData(int streamId, long streamVersion) throws SQLException {
         String commandText = scripts.readMessageData();
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
-            stmt.setString(1, streamId);
+            stmt.setInt(1, streamId);
             stmt.setLong(2, streamVersion);
 
             try (ResultSet result = stmt.executeQuery()) {
