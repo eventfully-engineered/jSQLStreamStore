@@ -4,11 +4,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>jSQLStreamStore</groupId>
+    <groupId>com.eventfullyengineered.jsqlstreamstore</groupId>
     <artifactId>jsqlstreamstore-parent</artifactId>
     <packaging>pom</packaging>
     <version>0.0.1-SNAPSHOT</version>
-    <name>jSQLstreamstore</name>
+    <name>jSQLStreamStore</name>
     <description>A Java stream store library specifically targeting SQL based implementations.</description>
 
     <modules>

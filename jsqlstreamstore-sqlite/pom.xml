@@ -4,18 +4,17 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
+        <groupId>com.eventfullyengineered.jsqlstreamstore</groupId>
         <artifactId>jsqlstreamstore-parent</artifactId>
-        <groupId>jSQLStreamStore</groupId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
-
 
     <artifactId>jsqlstreamstore-sqlite</artifactId>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>jSQLStreamStore</groupId>
+                <groupId>com.eventfullyengineered.jsqlstreamstore</groupId>
                 <artifactId>jsqlstreamstore-bom</artifactId>
                 <version>${project.version}</version>
                 <type>pom</type>
@@ -36,7 +35,7 @@
         </dependency>
 
         <dependency>
-            <groupId>jSQLStreamStore</groupId>
+            <groupId>com.eventfullyengineered.jsqlstreamstore</groupId>
             <artifactId>jsqlstreamstore-core</artifactId>
             <version>${project.version}</version>
         </dependency>
