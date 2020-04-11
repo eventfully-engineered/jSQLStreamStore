@@ -1,7 +1,7 @@
 # jSQLStreamStore
 
-[![Build Status](https://travis-ci.org/seancarroll/jSQLStreamStore.svg?branch=master)](https://travis-ci.org/seancarroll/jSQLStreamStore)
-[![codecov](https://codecov.io/gh/seancarroll/jSQLStreamStore/branch/master/graph/badge.svg)](https://codecov.io/gh/seancarroll/jSQLStreamStore)
+[![Build Status](https://travis-ci.org/eventfully-engineered/jSQLStreamStore.svg?branch=master)](https://travis-ci.org/eventfully-engineered/jSQLStreamStore)
+[![codecov](https://codecov.io/gh/eventfully-engineered/jSQLStreamStore/branch/master/graph/badge.svg)](https://codecov.io/gh/eventfully-engineered/jSQLStreamStore)
 
 Java port of Damian Hickey's [SQLStreamStore](https://github.com/SQLStreamStore/SQLStreamStore).
 A Java stream store library specifically targeting SQL based implementations. 
