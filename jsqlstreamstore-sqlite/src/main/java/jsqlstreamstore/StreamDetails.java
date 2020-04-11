@@ -4,14 +4,14 @@ import com.google.common.base.Preconditions;
 
 public class StreamDetails {
 
-    private int id;
+    private Integer id;
     private String name;
     private long version;
     private long position;
     private Long maxAge;
     private Long maxCount;
 
-    public StreamDetails(int id, String name, long version, long position, Long maxAge, Long maxCount) {
+    public StreamDetails(Integer id, String name, long version, long position, Long maxAge, Long maxCount) {
         this.id = id;
         this.name = Preconditions.checkNotNull(name);
         this.version = version;
@@ -20,7 +20,7 @@ public class StreamDetails {
         this.maxCount = maxCount;
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
@@ -42,6 +42,16 @@ public class StreamDetails {
 
     public Long getMaxCount() {
         return maxCount;
+    }
+
+
+    // TODO: I dont like this...
+    public boolean isEmpty() {
+        return id == null && version == -1;
+    }
+
+    public static StreamDetails empty(String streamName) {
+        return new StreamDetails(null, streamName, -1, -1, null, null);
     }
 
 }

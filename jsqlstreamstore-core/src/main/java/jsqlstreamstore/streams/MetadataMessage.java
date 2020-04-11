@@ -14,6 +14,8 @@ import java.math.BigInteger;
  */
 public class MetadataMessage {
 
+    // TODO: should be streamName
+
     /**
      * The stream id
      */

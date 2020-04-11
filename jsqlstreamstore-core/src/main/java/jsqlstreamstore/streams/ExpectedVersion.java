@@ -18,6 +18,7 @@ package jsqlstreamstore.streams;
  */
 public final class ExpectedVersion {
 
+    // TODO: I think we can remove that
     /**
      * The Stream should exist and should be Empty.
      * If it does not exist or is not empty treat that as a concurrency problem
@@ -35,6 +36,7 @@ public final class ExpectedVersion {
 	 */
     public static final int ANY = -2;
 
+    // TODO: I think we can ignore this
     /**
      * The stream should exist.
      * If it or a metadata stream does not exist treat that as a concurrency problem.
