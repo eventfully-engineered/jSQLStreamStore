@@ -58,15 +58,15 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/seancarroll/jSQLStreamStore.git</connection>
-        <developerConnection>scm:git:git@github.com:seancarroll/jSQLStreamStore.git</developerConnection>
-        <url>https://github.com/seancarroll/jSQLStreamStore</url>
+        <connection>scm:git:git://github.com/eventfully-engineered/jSQLStreamStore.git</connection>
+        <developerConnection>scm:git:git@github.com:eventfully-engineered/jSQLStreamStore.git</developerConnection>
+        <url>https://github.com/eventfully-engineered/jSQLStreamStore</url>
         <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/seancarroll/jSQLStreamStore/issues</url>
+        <url>https://github.com/eventfully-engineered/jSQLStreamStore/issues</url>
     </issueManagement>
 
     <dependencies>
