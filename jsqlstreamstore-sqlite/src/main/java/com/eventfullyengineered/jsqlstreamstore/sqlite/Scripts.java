@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  *
- * @author seancarroll
  *
  */
 public final class Scripts {
