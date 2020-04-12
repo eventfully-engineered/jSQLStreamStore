@@ -43,7 +43,7 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 
     @Override
     public AppendResult appendToStream(String streamName, long expectedVersion, NewStreamMessage message) throws SQLException {
-	    Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+	    Preconditions.checkArgument(!streamName.startsWith("$"), "streamName must not start with $ as this is dedicated for internal system streams");
 	    Preconditions.checkNotNull(message);
 
 	    logger.debug("AppendToStream {} with expected version {}", streamName, expectedVersion);
@@ -53,10 +53,12 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 
     @Override
     public AppendResult appendToStream(String streamName, long expectedVersion, NewStreamMessage[] messages) throws SQLException {
-        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamName must not start with $ as this is dedicated for internal system streams");
         Preconditions.checkNotNull(messages);
 
         logger.debug("AppendToStream {} with expected version {} and {} messages.", streamName, expectedVersion, messages.length);
+
+        // TODO: I'm not sure this makes sense to keep...
         if (messages.length == 0 && expectedVersion >= 0) {
             // If there is an expected version then nothing to do...
             // Expose CurrentPosition as part of AppendResult
@@ -89,7 +91,7 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 
     @Override
 	public void deleteStream(String streamName, long expectedVersion) throws SQLException {
-        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamName must not start with $ as this is dedicated for internal system streams");
 
         logger.debug("DeleteStream {} with expected version {}.", streamName, expectedVersion);
 
@@ -98,7 +100,7 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 
 	@Override
 	public void deleteMessage(String streamName, UUID messageId) throws SQLException {
-        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamName must not start with $ as this is dedicated for internal system streams");
 
 	    logger.debug("DeleteMessage {} with messageId {}", streamName, messageId);
 
@@ -113,7 +115,7 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 	        Integer maxAge,
 	        Long maxCount,
 			String metadataJson) throws SQLException {
-        Preconditions.checkArgument(!streamName.startsWith("$"), "streamId must not start with $ as this is dedicated for internal system streams");
+        Preconditions.checkArgument(!streamName.startsWith("$"), "streamName must not start with $ as this is dedicated for internal system streams");
         Preconditions.checkArgument(expectedStreamMetadataVersion >= -2, "expectedStreamMetadataVersion must be greater than or equal to -2");
 
         logger.debug("SetStreamMetadata {} with expected metadata version {}, max age {} and max count {}.",
