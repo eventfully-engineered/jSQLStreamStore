@@ -338,23 +338,23 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.owasp</groupId>
-                <artifactId>dependency-check-maven</artifactId>
-                <configuration>
-                    <failBuildOnAnyVulnerability>true</failBuildOnAnyVulnerability>
-                    <showSummary>true</showSummary>
-                    <suppressionFiles>suppressed-cves.xml</suppressionFiles>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>security-check</id>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.owasp</groupId>-->
+<!--                <artifactId>dependency-check-maven</artifactId>-->
+<!--                <configuration>-->
+<!--                    <failBuildOnAnyVulnerability>true</failBuildOnAnyVulnerability>-->
+<!--                    <showSummary>true</showSummary>-->
+<!--                    <suppressionFiles>suppressed-cves.xml</suppressionFiles>-->
+<!--                </configuration>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>security-check</id>-->
+<!--                        <goals>-->
+<!--                            <goal>check</goal>-->
+<!--                        </goals>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
