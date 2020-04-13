@@ -55,6 +55,7 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
     public AppendResult appendToStream(String streamName, long expectedVersion, NewStreamMessage[] messages) throws SQLException {
         Preconditions.checkArgument(!streamName.startsWith("$"), "streamName must not start with $ as this is dedicated for internal system streams");
         Preconditions.checkNotNull(messages);
+        // Preconditions.checkArgument(messages != null && messages.length > 0, "messages must not be null or empty");
 
         logger.debug("AppendToStream {} with expected version {} and {} messages.", streamName, expectedVersion, messages.length);
 

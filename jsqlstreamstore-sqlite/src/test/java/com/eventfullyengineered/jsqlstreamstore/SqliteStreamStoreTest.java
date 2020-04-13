@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SqliteStreamStoreTest {
@@ -45,6 +46,12 @@ class SqliteStreamStoreTest {
             .load();
         flyway.migrate();
     }
+
+//    @Test
+//    void shouldThrowWhenAppendingNullMessages() {
+//        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> store.appendToStream("test", ExpectedVersion.NO_STREAM, (NewStreamMessage) null));
+//        assertEquals("messages cannot be null or empty", ex.getMessage());
+//    }
 
     @Test
     void readAllForwardTest() throws SQLException {
