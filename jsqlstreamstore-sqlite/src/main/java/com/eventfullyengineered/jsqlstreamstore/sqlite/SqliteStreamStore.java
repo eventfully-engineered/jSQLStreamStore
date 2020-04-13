@@ -17,7 +17,6 @@ import com.eventfullyengineered.jsqlstreamstore.subscriptions.SubscriptionDroppe
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
-import com.eventfullyengineered.jsqlstreamstore.streams.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sqlite.SQLiteException;
@@ -85,7 +84,7 @@ public class SqliteStreamStore extends StreamStoreBase {
     protected AppendResult appendToStreamInternal(String streamName, long expectedVersion, NewStreamMessage[] messages) throws SQLException {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(streamName));
         Preconditions.checkArgument(expectedVersion >= -2);
-        Preconditions.checkNotNull(messages);
+        Preconditions.checkArgument(messages != null && messages.length > 0, "messages must not be null or empty");
 
         try (Connection connection = connectionFactory.openConnection()) {
             AppendResult result = appendToStreamInternal(connection, streamName, expectedVersion, messages);
@@ -98,16 +97,13 @@ public class SqliteStreamStore extends StreamStoreBase {
         }
     }
 
+    // TODO: idempotent writes. EventStore has a good break down of cases
+    // https://eventstore.com/docs/dotnet-api/optimistic-concurrency-and-idempotence/index.html
     private AppendResult appendToStreamInternal(Connection connection,
                                                 String streamName,
                                                 long expectedVersion,
                                                 NewStreamMessage[] messages) throws SQLException {
-
-        if (messages == null || messages.length == 0) {
-            throw new IllegalArgumentException("messages must not be null or empty");
-        }
-
-        // SqlStreamStore - when returned max count is not null
+        // TODO: SqlStreamStore - when returned max count is not null
         // it does CheckStreamMaxCount
         // TODO: wrap in logic to retry if deadlock
         if (expectedVersion == ExpectedVersion.ANY) {
@@ -139,7 +135,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             } else {
                 streamDetails = getStreamDetails(connection, streamName);
                 if (expectedVersion != streamDetails.getVersion()) {
-                    throw new WrongExpectedVersion("");
+                    throw new WrongExpectedVersion(streamName, expectedVersion);
                 }
             }
 
@@ -170,16 +166,12 @@ public class SqliteStreamStore extends StreamStoreBase {
                         connection);
 
                     if (messages.length > page.getMessages().length) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                            ex);
+                        throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
                     }
 
                     for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                         if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                            throw new WrongExpectedVersion(
-                                ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                                ex);
+                            throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
                         }
                     }
                     return new AppendResult(
@@ -197,12 +189,6 @@ public class SqliteStreamStore extends StreamStoreBase {
     private AppendResult appendToStreamExpectedVersionAny(Connection connection,
                                                           String streamName,
                                                           NewStreamMessage[] messages) throws SQLException {
-
-        // TODO: is this how we want to handle this?
-        if (messages == null || messages.length == 0) {
-            throw new IllegalArgumentException("messages must not be null or empty");
-        }
-
         try {
             StreamMessage lastStreamMessage = insert(connection, streamName, messages);
 
@@ -224,16 +210,12 @@ public class SqliteStreamStore extends StreamStoreBase {
                         connection);
 
                     if (messages.length > page.getMessages().length) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                            ex);
+                        throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
                     }
 
                     for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                         if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                            throw new WrongExpectedVersion(
-                                ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                                ex);
+                            throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
                         }
                     }
                     return new AppendResult(
@@ -252,14 +234,8 @@ public class SqliteStreamStore extends StreamStoreBase {
                                                                String streamName,
                                                                NewStreamMessage[] messages) throws SQLException {
 
-        // TODO: check expected version
-
-        // TODO: is this how we want to handle this?
-        if (messages == null || messages.length == 0) {
-            throw new IllegalArgumentException("messages must not be null or empty");
-        }
-
         try {
+            // TODO: check expected version
             StreamMessage lastStreamMessage = insert(connection, streamName, messages);
 
             // TODO: get max count
@@ -281,16 +257,12 @@ public class SqliteStreamStore extends StreamStoreBase {
                         connection);
 
                     if (messages.length > page.getMessages().length) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                            ex);
+                        throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
                     }
 
                     for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                         if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                            throw new WrongExpectedVersion(
-                                ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                                ex);
+                            throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
                         }
                     }
                     return new AppendResult(
@@ -310,14 +282,11 @@ public class SqliteStreamStore extends StreamStoreBase {
                                                        long expectedVersion,
                                                        NewStreamMessage[] messages) throws SQLException {
 
+        // TODO: expectedVersion > currentVersion - a WrongExpectedVersionException is thrown.
+
         StreamDetails streamDetails = getStreamDetails(connection, streamName);
         if (streamDetails.getVersion() != expectedVersion) {
-            throw new WrongExpectedVersion("");
-        }
-
-        // TODO: is this how we want to handle this?
-        if (messages == null || messages.length == 0) {
-            throw new IllegalArgumentException("messages must not be null or empty");
+            throw new WrongExpectedVersion(streamName, expectedVersion);
         }
 
         try {
@@ -342,16 +311,12 @@ public class SqliteStreamStore extends StreamStoreBase {
                         connection);
 
                     if (messages.length > page.getMessages().length) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                            ex);
+                        throw new WrongExpectedVersion(streamName, expectedVersion, ex);
                     }
 
                     for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                         if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                            throw new WrongExpectedVersion(
-                                ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                                ex);
+                            throw new WrongExpectedVersion(streamName, expectedVersion, ex);
                         }
                     }
                     return new AppendResult(

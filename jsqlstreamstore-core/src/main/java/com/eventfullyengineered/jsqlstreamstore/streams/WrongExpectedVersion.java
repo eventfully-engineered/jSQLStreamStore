@@ -9,20 +9,18 @@ public class WrongExpectedVersion extends RuntimeException {
 
     private static final long serialVersionUID = 2055098540147895634L;
 
-    /**
-     *
-     * @param message
-     */
-    public WrongExpectedVersion(String message) {
-        super(message);
+    public WrongExpectedVersion(String streamName, long expectedVersion) {
+        super(ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion));
     }
 
     /**
      *
-     * @param message
+     * @param streamName
+     * @param expectedVersion
      * @param innerException
      */
-    public WrongExpectedVersion(String message, Exception innerException) {
-        super(message, innerException);
+    public WrongExpectedVersion(String streamName, long expectedVersion, Exception innerException) {
+        super(ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion), innerException);
     }
+
 }

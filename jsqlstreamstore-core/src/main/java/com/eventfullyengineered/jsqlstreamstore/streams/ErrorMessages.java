@@ -1,5 +1,10 @@
 package com.eventfullyengineered.jsqlstreamstore.streams;
 
+// TODO: may not need this and could move messages into corresponding exception
+
+/**
+ *
+ */
 public final class ErrorMessages {
 
     private ErrorMessages() {
