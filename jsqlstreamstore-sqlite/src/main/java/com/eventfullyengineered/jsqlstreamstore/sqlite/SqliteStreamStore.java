@@ -119,7 +119,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                                                           String streamName,
                                                           NewStreamMessage[] messages) throws SQLException {
         try {
-            StreamMessage lastStreamMessage = insert(connection, streamName, messages);
+            StreamMessage lastStreamMessage = insert(connection, streamName, ExpectedVersion.ANY, messages);
 
             // TODO: get max count
             return new AppendResult(null, lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
@@ -165,7 +165,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
         try {
             // TODO: check expected version
-            StreamMessage lastStreamMessage = insert(connection, streamName, messages);
+            StreamMessage lastStreamMessage = insert(connection, streamName, ExpectedVersion.NO_STREAM, messages);
 
             // TODO: get max count
             return new AppendResult(null, lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
@@ -209,18 +209,10 @@ public class SqliteStreamStore extends StreamStoreBase {
                                                        String streamName,
                                                        long expectedVersion,
                                                        NewStreamMessage[] messages) throws SQLException {
-
-        // TODO: expectedVersion > currentVersion - a WrongExpectedVersionException is thrown.
-
-        StreamDetails streamDetails = getStreamDetails(connection, streamName);
-        if (streamDetails.getVersion() != expectedVersion) {
-            throw new WrongExpectedVersion(streamName, expectedVersion);
-        }
-
         try {
             // TODO: better but still needs work
 
-            StreamMessage lastStreamMessage = insert(connection, streamName, messages);
+            StreamMessage lastStreamMessage = insert(connection, streamName, expectedVersion, messages);
 
             // TODO: get max count
             return new AppendResult(null, lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
@@ -260,15 +252,23 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     // TODO: take a look at this and see what should belong here
-    private StreamMessage insert(Connection connection, String streamName, NewStreamMessage[] newMessages) throws SQLException {
+    private StreamMessage insert(Connection connection, String streamName, long expectedVersion, NewStreamMessage[] newMessages) throws SQLException {
         connection.setAutoCommit(false);
 
         StreamDetails streamDetails = getOrCreateStreamDetail(connection, streamName);
+        // TODO: verify this is correct for all versions and check works here
+        // should follow something like what eventstore does
+        // https://eventstore.com/docs/dotnet-api/optimistic-concurrency-and-idempotence/index.html
+        if (expectedVersion > streamDetails.getVersion()) {
+            throw new WrongExpectedVersion(streamName, expectedVersion);
+        }
 
         batchInsert(connection, streamDetails.getId(), newMessages, streamDetails.getVersion());
 
         StreamMessage lastStreamMessage = getLastStreamMessage(streamName);
-        // TODO: check null
+
+        // should never be null here
+        assert lastStreamMessage != null;
 
         updateStream(connection, streamDetails.getId(), lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
 
@@ -291,7 +291,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                 NewStreamMessage message = messages[i];
                 ps.setObject(1, message.getMessageId());
                 ps.setInt(2, streamId);
-                ps.setInt(3, i + 1);
+                ps.setLong(3, latestStreamVersion + i + 1);
                 ps.setString(4, DateTimeFormatter.ISO_DATE_TIME.format(date));
                 ps.setString(5, message.getType());
                 ps.setString(6, message.getData());
@@ -430,7 +430,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                         // TODO: I dont think we need or want this
                         LocalDateTime created = LocalDateTime.parse(result.getString(6));
                         String type = result.getString(7);
-                        String jsonMetadata = result.getString(8);
+                        String metadata = result.getString(8);
 
                         // TODO: improve
                         final StreamMessage message;
@@ -442,7 +442,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                                 ordinal,
                                 created,
                                 type,
-                                jsonMetadata,
+                                metadata,
                                 result.getString(9)
                             );
                         } else {
@@ -453,7 +453,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                                 ordinal,
                                 created,
                                 type,
-                                jsonMetadata,
+                                metadata,
                                 () -> getJsonData(streamId, streamVersion)
                             );
                         }
@@ -652,6 +652,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                     false,
                     null);
 
+                // TODO: batch?
                 if (streamMessagesPage.getStatus() == PageReadStatus.SUCCESS) {
                     for (StreamMessage message : streamMessagesPage.getMessages()) {
                         deleteMessageInternal(streamId, message.getMessageId());

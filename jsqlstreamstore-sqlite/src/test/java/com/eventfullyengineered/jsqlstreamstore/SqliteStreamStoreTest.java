@@ -2,6 +2,7 @@ package com.eventfullyengineered.jsqlstreamstore;
 
 import com.eventfullyengineered.jsqlstreamstore.sqlite.SqliteStreamStore;
 import com.eventfullyengineered.jsqlstreamstore.sqlite.SqliteStreamStoreSettings;
+import com.eventfullyengineered.jsqlstreamstore.streams.AppendResult;
 import com.eventfullyengineered.jsqlstreamstore.streams.ExpectedVersion;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;
 import com.eventfullyengineered.jsqlstreamstore.streams.PageReadStatus;
@@ -12,6 +13,7 @@ import com.eventfullyengineered.jsqlstreamstore.streams.ReadStreamPage;
 import com.eventfullyengineered.jsqlstreamstore.streams.StreamVersion;
 import com.fasterxml.uuid.Generators;
 import com.eventfullyengineered.jsqlstreamstore.store.ConnectionFactory;
+import com.google.common.base.Stopwatch;
 import org.apache.commons.lang3.StringUtils;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Assertions;
@@ -20,7 +22,10 @@ import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -51,6 +56,26 @@ class SqliteStreamStoreTest {
 //    void shouldThrowWhenAppendingNullMessages() {
 //        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> store.appendToStream("test", ExpectedVersion.NO_STREAM, (NewStreamMessage) null));
 //        assertEquals("messages cannot be null or empty", ex.getMessage());
+//    }
+
+    // 80 - 206 ms
+//    @Test
+//    void appendPerf() throws SQLException {
+//
+//        List<NewStreamMessage> messages = new ArrayList<>(1000);
+//        for (int i = 0; i < 1000; i++) {
+//            UUID id = Generators.timeBasedGenerator().generate();
+//            messages.add(new NewStreamMessage(id, "someType", "{\"name\":\"" + id + "\"}"));
+//        }
+//
+//        NewStreamMessage[] arr =  messages.toArray(new NewStreamMessage[0]);
+//
+//        Stopwatch sw = Stopwatch.createStarted();
+//        AppendResult result = store.appendToStream("test", ExpectedVersion.NO_STREAM, arr);
+//        sw.stop();
+//
+//        System.out.println(result);
+//        System.out.println(sw.elapsed(TimeUnit.MILLISECONDS));
 //    }
 
     @Test
