@@ -101,11 +101,17 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     // TODO: idempotent writes. EventStore has a good break down of cases
     // https://eventstore.com/docs/dotnet-api/optimistic-concurrency-and-idempotence/index.html
+    // if we didnt have a stream table what would it look like?
+    // TODO: try this in branch
+    // get latest version and if null it would be -1 (no stream)
+    // write batch
+    // if no stream append create metadata stream (append to metadata)
     private AppendResult appendToStreamInternal(Connection connection,
                                                 String streamName,
                                                 long expectedVersion,
                                                 NewStreamMessage[] messages) throws SQLException {
         // TODO: wrap in logic to retry if deadlock
+        // what are the potential sqlite deadlock codes?
         try {
             connection.setAutoCommit(false);
 
