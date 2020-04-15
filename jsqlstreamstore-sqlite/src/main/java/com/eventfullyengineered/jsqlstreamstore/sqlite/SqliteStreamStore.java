@@ -87,6 +87,8 @@ public class SqliteStreamStore extends StreamStoreBase {
         Preconditions.checkArgument(messages != null && messages.length > 0, "messages must not be null or empty");
 
         try (Connection connection = connectionFactory.openConnection()) {
+            // TODO: strange to get AppendResult here and then return a new AppendResult
+            // SqlStreamStore returns MsSqlAppendResult/PostgresAppendResult/etc here then converts it to common AppendResult
             AppendResult result = appendToStreamInternal(connection, streamName, expectedVersion, messages);
 
             if (result.getMaxCount() != null) {
@@ -103,119 +105,30 @@ public class SqliteStreamStore extends StreamStoreBase {
                                                 String streamName,
                                                 long expectedVersion,
                                                 NewStreamMessage[] messages) throws SQLException {
-        // TODO: SqlStreamStore - when returned max count is not null
-        // it does CheckStreamMaxCount
         // TODO: wrap in logic to retry if deadlock
-        if (expectedVersion == ExpectedVersion.ANY) {
-            return appendToStreamExpectedVersionAny(connection, streamName, messages);
-        }
-        if (expectedVersion == ExpectedVersion.NO_STREAM) {
-            return appendToStreamExpectedVersionNoStream(connection, streamName, messages);
-        }
-        return appendToStreamExpectedVersion(connection, streamName, expectedVersion, messages);
-    }
-
-    private AppendResult appendToStreamExpectedVersionAny(Connection connection,
-                                                          String streamName,
-                                                          NewStreamMessage[] messages) throws SQLException {
         try {
-            StreamMessage lastStreamMessage = insert(connection, streamName, ExpectedVersion.ANY, messages);
+            connection.setAutoCommit(false);
 
-            // TODO: get max count
-            return new AppendResult(null, lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
-        } catch (SQLException ex) {
-            // TODO: review this
-            connection.rollback();
-            if (ex instanceof SQLiteException) {
-                SQLiteException sqliteException = (SQLiteException) ex;
-                if (SQLITE_CONSTRAINT_UNIQUE == sqliteException.getResultCode())    {
-                    ReadStreamPage page = readStreamInternal(
-                        streamName,
-                        StreamVersion.START,
-                        messages.length,
-                        ReadDirection.FORWARD,
-                        false,
-                        null,
-                        connection);
-
-                    if (messages.length > page.getMessages().length) {
-                        throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
-                    }
-
-                    for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                        if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                            throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
-                        }
-                    }
-                    return new AppendResult(
-                        null,
-                        page.getLastStreamVersion(),
-                        page.getLastStreamPosition());
-                }
+            StreamDetails streamDetails = getOrCreateStreamDetail(connection, streamName);
+            // TODO: verify this is correct for all versions and check works here
+            // should follow something like what eventstore does
+            // https://eventstore.com/docs/dotnet-api/optimistic-concurrency-and-idempotence/index.html
+            if (expectedVersion > streamDetails.getVersion()) {
+                throw new WrongExpectedVersion(streamName, expectedVersion);
             }
 
-            throw ex;
-        }
+            batchInsert(connection, streamDetails.getId(), messages, streamDetails.getVersion());
 
-    }
+            StreamMessage lastStreamMessage = getLastStreamMessage(streamName);
 
-    private AppendResult appendToStreamExpectedVersionNoStream(Connection connection,
-                                                               String streamName,
-                                                               NewStreamMessage[] messages) throws SQLException {
+            // should never be null here
+            assert lastStreamMessage != null;
 
-        try {
-            // TODO: check expected version
-            StreamMessage lastStreamMessage = insert(connection, streamName, ExpectedVersion.NO_STREAM, messages);
+            updateStream(connection, streamDetails.getId(), lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
 
-            // TODO: get max count
-            return new AppendResult(null, lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
-        } catch (SQLException ex) {
-            connection.rollback();
+            connection.commit();
 
-            if (ex instanceof SQLiteException) {
-                SQLiteException sqliteException = (SQLiteException) ex;
-                if (SQLITE_CONSTRAINT_UNIQUE == sqliteException.getResultCode())    {
-                    ReadStreamPage page = readStreamInternal(
-                        streamName,
-                        StreamVersion.START,
-                        messages.length,
-                        ReadDirection.FORWARD,
-                        false,
-                        null,
-                        connection);
-
-                    if (messages.length > page.getMessages().length) {
-                        throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
-                    }
-
-                    for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
-                        if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                            throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
-                        }
-                    }
-                    return new AppendResult(
-                        null,
-                        page.getLastStreamVersion(),
-                        page.getLastStreamPosition());
-                }
-            }
-
-            throw ex;
-        }
-
-    }
-
-    private AppendResult appendToStreamExpectedVersion(Connection connection,
-                                                       String streamName,
-                                                       long expectedVersion,
-                                                       NewStreamMessage[] messages) throws SQLException {
-        try {
-            // TODO: better but still needs work
-
-            StreamMessage lastStreamMessage = insert(connection, streamName, expectedVersion, messages);
-
-            // TODO: get max count
-            return new AppendResult(null, lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
+            return new AppendResult(streamDetails.getMaxCount(), lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
         } catch (SQLException ex) {
             connection.rollback();
             if (ex instanceof SQLiteException) {
@@ -249,32 +162,6 @@ public class SqliteStreamStore extends StreamStoreBase {
             throw ex;
         }
 
-    }
-
-    // TODO: take a look at this and see what should belong here
-    private StreamMessage insert(Connection connection, String streamName, long expectedVersion, NewStreamMessage[] newMessages) throws SQLException {
-        connection.setAutoCommit(false);
-
-        StreamDetails streamDetails = getOrCreateStreamDetail(connection, streamName);
-        // TODO: verify this is correct for all versions and check works here
-        // should follow something like what eventstore does
-        // https://eventstore.com/docs/dotnet-api/optimistic-concurrency-and-idempotence/index.html
-        if (expectedVersion > streamDetails.getVersion()) {
-            throw new WrongExpectedVersion(streamName, expectedVersion);
-        }
-
-        batchInsert(connection, streamDetails.getId(), newMessages, streamDetails.getVersion());
-
-        StreamMessage lastStreamMessage = getLastStreamMessage(streamName);
-
-        // should never be null here
-        assert lastStreamMessage != null;
-
-        updateStream(connection, streamDetails.getId(), lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
-
-        connection.commit();
-
-        return lastStreamMessage;
     }
 
     private void batchInsert(Connection connection,
@@ -326,7 +213,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             stmt.executeUpdate();
 
             NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(streamName);
-            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
+            appendToStreamInternal(connection, Deleted.DELETED_STREAM_ID, ExpectedVersion.ANY, new NewStreamMessage[] { streamDeletedEvent });
 
             // Delete metadata stream (if it exists)
             deleteStreamAnyVersion(connection, streamName);
@@ -361,7 +248,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
         if (aStreamIsDeleted) {
             NewStreamMessage streamDeletedEvent = Deleted.createStreamDeletedMessage(streamName);
-            appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { streamDeletedEvent });
+            appendToStreamInternal(connection, Deleted.DELETED_STREAM_ID, ExpectedVersion.ANY, new NewStreamMessage[] { streamDeletedEvent });
         }
 
     }
@@ -380,7 +267,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                 stmt.execute();
                 if (stmt.getUpdateCount() == 1) {
                     NewStreamMessage deletedMessage = Deleted.createMessageDeletedMessage(streamName, messageId);
-                    appendToStreamExpectedVersionAny(connection, Deleted.DELETED_STREAM_ID, new NewStreamMessage[] { deletedMessage });
+                    appendToStreamInternal(connection, Deleted.DELETED_STREAM_ID, ExpectedVersion.ANY, new NewStreamMessage[] { deletedMessage });
                 }
             }
             connection.commit();
