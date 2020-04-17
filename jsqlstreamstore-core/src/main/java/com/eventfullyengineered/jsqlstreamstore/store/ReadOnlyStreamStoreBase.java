@@ -100,7 +100,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 
         LOG.debug("ReadStreamForwards {} from version {} with max count {}.", streamName, fromVersionInclusive, maxCount);
 
-        ReadNextStreamPage readNext = (long nextPosition) -> readStreamForwards(streamName, fromVersionInclusive, maxCount, prefetch);
+        ReadNextStreamPage readNext = (long nextPosition) -> readStreamForwards(streamName, nextPosition, maxCount, prefetch);
 
         ReadStreamPage page = readStreamForwardsInternal(streamName, fromVersionInclusive, maxCount, prefetch, readNext);
 
