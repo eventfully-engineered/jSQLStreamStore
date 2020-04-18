@@ -15,6 +15,7 @@ import com.google.common.collect.Iterables;
 import io.reactivex.ObservableSource;
 import org.apache.commons.text.StringEscapeUtils;
 import org.postgresql.util.PGobject;
+import org.postgresql.util.PSQLState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -357,7 +358,6 @@ public class PostgresStreamStore extends StreamStoreBase {
             messages);
     }
 
-    // Deadlocks appear to be a fact of life when there is high contention on a table regardless of transaction isolation settings.
     private static <T> T retryOnDeadLock(Callable<T> operation) throws Exception {
         // TODO too much? too little? configurable?
         int maxRetries = 2;
@@ -368,8 +368,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             try {
                 return operation.call();
             } catch(SQLException ex) {
-                // Deadlock error codes;
-                if (ex.getErrorCode() == 1205 || ex.getErrorCode() == 1222) {
+                if (PSQLState.DEADLOCK_DETECTED.getState().equals(ex.getSQLState())) {
                     exception = ex;
                     retryCount++;
                 }
