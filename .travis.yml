@@ -29,8 +29,10 @@ script:
   - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.projectKey=eventfully-engineered_jSQLStreamStore
 
 after_script:
-  - JACOCO_SOURCE_PATH="jsqlstreamstore-core/src/main/java jsqlstreamstore-postgres/src/main/java jsqlstreamstore-sqlite/src/main/java" ./cc-test-reporter format-coverage -d -t jacoco
-  - ./cc-test-reporter upload-coverage
+  - ./cc-test-reporter format-coverage  -d -t jacoco -o coverage/codeclimate.core.json ./jsqlstreamstore-core/target/site/jacoco/jacoco.xml
+  - ./cc-test-reporter format-coverage  -d -t jacoco -o coverage/codeclimate.postgres.json ./jsqlstreamstore-postgres/target/site/jacoco/jacoco.xml
+  - ./cc-test-reporter sum-coverage coverage/codeclimate.*.json -p 2
+  - if [[ "$TRAVIS_TEST_RESULT" == 0 ]]; then ./cc-test-reporter upload-coverage; fi
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
