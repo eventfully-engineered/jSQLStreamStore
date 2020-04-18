@@ -1,29 +1,37 @@
 language: java
 jdk:
-- openjdk8
+  - openjdk8
+
+env:
+  global:
+    - CC_TEST_REPORTER_ID=3d452c37c8a9ea271c262a48e14a139df67f7ee2313161ad11429c6e2109a1c1
+
+addons:
+  sonarcloud:
+    organization: "eventfully-engineered"
+    token:
+      secure: "xe+txukN4ghNR1aHXfI4S0Wsaj/d3TUtuGPlUcbebY/vVr/trh+uBrxeXnCXrATuvu5iZ6qCQWqyyT3bjoUozklK04nrHDR6DMhQc+JerMHPWhIAeh4/qm2IK124WmlSTZOpntalnykY3POcDTs6ze3bwlrYmo8NQoYlJP5iDfbcQDLM6IYtENPm0qZczlxcexRJHF5udWdPKeXBL8n4NJYZ6oWYzz7I/6a+ELRJWbQ/nXpMWXHQ9rsL2o6IMHeSP4J8rvlLVQXxZWeOeOybRWdyfazy0QQdZ8fvDkOP/n+W52S2A4vyHA6Iy5DmK01MdyRouO5slp31NqlsEZ1DUuo2y1aXfToQTVJvs2qMa1ZbFN4TlyZ1P7y7rW6f1o1G2U1tP3sJ7Hst1G2ejgecQV50eSa+cFr1auN8Vst+dVDDxeLBFoXLZgq/KXGpBMgTU5QGTUr+OeNizagh9mjNNf8W6ao2NYnMGt/ICaNhP05Fe/1ZXWiy3hl0Op9pOgu7oMp0RDyOC9JwnsXxTVSYhW/M6jez4ON6OLauxy9Wacfm28QjmSghnBB+YWB3DUy7fseyUITgGY76BhXdoY7JetvEE2Ox4+XjQ2jJDqwW/tpdejUbZ6r+utNTHnP7QwjoxS5My3fwU96zIkf/edibgBGBG2WCKhy1IeR9SCSiJko="
 
 cache:
-    directories:
+  directories:
     - $HOME/.m2
+    - $HOME/.sonar/cache
 
 services:
-- docker
+  - docker
 
 before_script:
-- curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-- chmod +x ./cc-test-reporter
-- ./cc-test-reporter before-build
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
 
-script: mvn verify -P code-coverage
+script:
+  - mvn verify -P code-coverage
+  # - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.projectKey=eventfully-engineered_jSQLStreamStore
 
 after_script:
-- ./cc-test-reporter format-coverage -d -t jacoco ./target/site/report-aggregate/jacoco.xml
-- ./cc-test-reporter upload-coverage -d
-
+  - JACOCO_SOURCE_PATH=jfluentvalidation-core/src/main/java ./cc-test-reporter format-coverage ./jfluentvalidation-core/target/site/jacoco/jacoco.xml -d -t jacoco
+  - ./cc-test-reporter upload-coverage
 
 after_success:
-- bash <(curl -s https://codecov.io/bash)
-#  - snyk monitor
-
-
-
+  - bash <(curl -s https://codecov.io/bash)
