@@ -26,7 +26,7 @@ before_script:
   - ./cc-test-reporter before-build
 
 script:
-  - mvn clean org.jacoco:jacoco-maven-plugin:prepare-agent install sonar:sonar -Dsonar.projectKey=eventfully-engineered_jSQLStreamStore
+  - mvn clean verify sonar:sonar -Dsonar.projectKey=eventfully-engineered_jSQLStreamStore -Pcode-coverage
 
 after_script:
   - ./cc-test-reporter format-coverage  -d -t jacoco -o coverage/codeclimate.core.json ./jsqlstreamstore-core/target/site/jacoco/jacoco.xml
