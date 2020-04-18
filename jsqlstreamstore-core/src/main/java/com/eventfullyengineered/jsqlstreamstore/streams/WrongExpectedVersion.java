@@ -9,8 +9,13 @@ public class WrongExpectedVersion extends RuntimeException {
 
     private static final long serialVersionUID = 2055098540147895634L;
 
-    public WrongExpectedVersion(String streamName, long expectedVersion) {
-        super(ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion));
+    // TODO: for postgres...right now dont have a great way to get stream version
+    public WrongExpectedVersion(String streamName, long expectedVersion, Exception innerException) {
+        super(ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion), innerException);
+    }
+
+    public WrongExpectedVersion(String streamName, long version, long expectedVersion) {
+        super(ErrorMessages.appendFailedWrongExpectedVersion(streamName, version, expectedVersion));
     }
 
     /**
@@ -19,8 +24,8 @@ public class WrongExpectedVersion extends RuntimeException {
      * @param expectedVersion
      * @param innerException
      */
-    public WrongExpectedVersion(String streamName, long expectedVersion, Exception innerException) {
-        super(ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion), innerException);
+    public WrongExpectedVersion(String streamName, long version, long expectedVersion, Exception innerException) {
+        super(ErrorMessages.appendFailedWrongExpectedVersion(streamName, version, expectedVersion), innerException);
     }
 
 }

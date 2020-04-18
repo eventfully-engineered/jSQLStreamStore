@@ -464,16 +464,12 @@ public class PostgresStreamStore extends StreamStoreBase {
                     connection);
 
                 if (messages.length > page.getMessages().length) {
-                    throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
-                        ex);
+                    throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
-                            ex);
+                        throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
                     }
                 }
                 return new AppendResult(
@@ -484,9 +480,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.ANY),
-                    ex);
+                throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
             }
 
             // throw ex;
@@ -551,7 +545,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             // TODO: this doesnt appear to work
             if (ex instanceof SQLIntegrityConstraintViolationException) {
-                System.out.println("integrity constraint violation");
+                LOG.warn("integrity constraint violation");
             }
 
             if ("23505".equals(ex.getSQLState())) {
@@ -566,16 +560,12 @@ public class PostgresStreamStore extends StreamStoreBase {
                     connection);
 
                 if (messages.length > page.getMessages().length) {
-                    throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                        ex);
+                    throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                            ex);
+                        throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
                     }
                 }
                 return new AppendResult(
@@ -586,9 +576,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             // TODO: fix this....doesn't seem to work. check docs
             if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM),
-                    ex);
+                throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
             }
 
             // throw ex;
@@ -683,16 +671,12 @@ public class PostgresStreamStore extends StreamStoreBase {
                     connection);
 
                 if (messages.length > page.getMessages().length) {
-                    throw new WrongExpectedVersion(
-                        ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
-                        ex);
+                    throw new WrongExpectedVersion(streamName, expectedVersion, ex);
                 }
 
                 for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                     if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                        throw new WrongExpectedVersion(
-                            ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
-                            ex);
+                        throw new WrongExpectedVersion(streamName, expectedVersion, ex);
                     }
                 }
                 return new AppendResult(
@@ -703,9 +687,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             // TODO: fix this...this
             if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(
-                    ErrorMessages.appendFailedWrongExpectedVersion(streamName, expectedVersion),
-                    ex);
+                throw new WrongExpectedVersion(streamName, expectedVersion, ex);
             }
 
             // throw ex;

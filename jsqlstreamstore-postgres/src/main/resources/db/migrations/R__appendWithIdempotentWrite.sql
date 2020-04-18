@@ -8,6 +8,7 @@ DECLARE
     _stream_id integer;
     _latest_stream_version bigint;
     _latest_stream_position bigint;
+    _max_count bigint;
     message new_message;
     ret append_result;
 	conflict record;
@@ -18,8 +19,8 @@ BEGIN
 	END IF;
 
 	-- lock?
-	SELECT public.streams.id, public.streams.version, public.streams.position
-	INTO _stream_id, _latest_stream_version, _latest_stream_position
+	SELECT public.streams.id, public.streams.version, public.streams.position, public.streams.max_count
+	INTO _stream_id, _latest_stream_version, _latest_stream_position, _max_count
     FROM public.streams
     WHERE public.streams.name = stream_name;
 
@@ -67,7 +68,7 @@ BEGIN
 	SET version = _latest_stream_version, position = _latest_stream_position
 	WHERE public.streams.id = _stream_id;
 
-    RETURN QUERY SELECT null::bigint, _latest_stream_version, _latest_stream_position;
+    RETURN QUERY SELECT _max_count, _latest_stream_version, _latest_stream_position;
 
 END;
 $$ LANGUAGE plpgsql
