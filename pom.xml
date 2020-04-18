@@ -112,10 +112,10 @@
                                 </goals>
                             </execution>
                             <execution>
-                                <id>report-aggregate</id>
+                                <id>report</id>
                                 <phase>verify</phase>
                                 <goals>
-                                    <goal>report-aggregate</goal>
+                                    <goal>report</goal>
                                 </goals>
                             </execution>
                         </executions>
