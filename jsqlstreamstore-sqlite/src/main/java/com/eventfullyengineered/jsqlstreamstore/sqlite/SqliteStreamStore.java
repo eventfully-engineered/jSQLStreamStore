@@ -106,21 +106,23 @@ public class SqliteStreamStore extends StreamStoreBase {
     // get latest version and if null it would be -1 (no stream)
     // write batch
     // if no stream append create metadata stream (append to metadata)
+    // otherwise get last metadata message
     private AppendResult appendToStreamInternal(Connection connection,
                                                 String streamName,
                                                 long expectedVersion,
                                                 NewStreamMessage[] messages) throws SQLException {
         // TODO: wrap in logic to retry if deadlock
         // what are the potential sqlite deadlock codes?
+        StreamDetails streamDetails = null;
         try {
             connection.setAutoCommit(false);
 
-            StreamDetails streamDetails = getOrCreateStreamDetail(connection, streamName);
+            streamDetails = getOrCreateStreamDetail(connection, streamName);
             // TODO: verify this is correct for all versions and check works here
             // should follow something like what eventstore does
             // https://eventstore.com/docs/dotnet-api/optimistic-concurrency-and-idempotence/index.html
             if (expectedVersion > streamDetails.getVersion()) {
-                throw new WrongExpectedVersion(streamName, expectedVersion);
+                throw new WrongExpectedVersion(streamName, streamDetails.getVersion(), expectedVersion);
             }
 
             batchInsert(connection, streamDetails.getId(), messages, streamDetails.getVersion());
@@ -139,7 +141,12 @@ public class SqliteStreamStore extends StreamStoreBase {
             connection.rollback();
             if (ex instanceof SQLiteException) {
                 SQLiteException sqliteException = (SQLiteException) ex;
-                if (SQLITE_CONSTRAINT_UNIQUE == sqliteException.getResultCode())    {
+                if (SQLITE_CONSTRAINT_UNIQUE == sqliteException.getResultCode()) {
+
+                    long streamVersion = streamDetails != null
+                        ? streamDetails.getVersion()
+                        : -1;
+
                     ReadStreamPage page = readStreamInternal(
                         streamName,
                         StreamVersion.START,
@@ -150,12 +157,12 @@ public class SqliteStreamStore extends StreamStoreBase {
                         connection);
 
                     if (messages.length > page.getMessages().length) {
-                        throw new WrongExpectedVersion(streamName, expectedVersion, ex);
+                        throw new WrongExpectedVersion(streamName, streamDetails.getVersion(), expectedVersion, ex);
                     }
 
                     for (int i = 0; i < Math.min(messages.length, page.getMessages().length); i++) {
                         if (!Objects.equals(messages[i].getMessageId(), page.getMessages()[i].getMessageId())) {
-                            throw new WrongExpectedVersion(streamName, expectedVersion, ex);
+                            throw new WrongExpectedVersion(streamName, streamDetails.getVersion(), expectedVersion, ex);
                         }
                     }
                     return new AppendResult(
