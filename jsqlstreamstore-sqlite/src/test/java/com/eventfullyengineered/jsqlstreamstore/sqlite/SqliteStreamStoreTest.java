@@ -1,31 +1,15 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.sqlite;
 
-import com.eventfullyengineered.jsqlstreamstore.sqlite.SqliteStreamStore;
-import com.eventfullyengineered.jsqlstreamstore.sqlite.SqliteStreamStoreSettings;
-import com.eventfullyengineered.jsqlstreamstore.streams.AppendResult;
-import com.eventfullyengineered.jsqlstreamstore.streams.ExpectedVersion;
+import com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite.SqliteStreamStore;
+import com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite.SqliteStreamStoreSettings;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;
-import com.eventfullyengineered.jsqlstreamstore.streams.PageReadStatus;
-import com.eventfullyengineered.jsqlstreamstore.streams.Position;
-import com.eventfullyengineered.jsqlstreamstore.streams.ReadAllPage;
-import com.eventfullyengineered.jsqlstreamstore.streams.ReadDirection;
-import com.eventfullyengineered.jsqlstreamstore.streams.ReadStreamPage;
-import com.eventfullyengineered.jsqlstreamstore.streams.StreamVersion;
-import com.fasterxml.uuid.Generators;
 import com.eventfullyengineered.jsqlstreamstore.store.ConnectionFactory;
-import com.google.common.base.Stopwatch;
 import org.apache.commons.lang3.StringUtils;
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 
 import javax.sql.DataSource;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

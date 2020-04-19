@@ -1,19 +1,19 @@
-package com.eventfullyengineered.jsqlstreamstore.sqlite;
+package com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite;
 
 import com.eventfullyengineered.jsqlstreamstore.StreamNotFoundException;
 import com.eventfullyengineered.jsqlstreamstore.common.ResultSets;
 import com.eventfullyengineered.jsqlstreamstore.infrastructure.Empty;
 import com.eventfullyengineered.jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
+import com.eventfullyengineered.jsqlstreamstore.streams.*;
+import com.eventfullyengineered.jsqlstreamstore.subscriptions.AllStreamSubscription;
+import com.eventfullyengineered.jsqlstreamstore.subscriptions.StreamSubscription;
+import com.eventfullyengineered.jsqlstreamstore.subscriptions.SubscriptionDropped;
 import com.eventfullyengineered.jsqlstreamstore.store.ConnectionFactory;
 import com.eventfullyengineered.jsqlstreamstore.store.StreamStoreBase;
-import com.eventfullyengineered.jsqlstreamstore.streams.*;
 import com.eventfullyengineered.jsqlstreamstore.subscriptions.AllStreamMessageReceived;
-import com.eventfullyengineered.jsqlstreamstore.subscriptions.AllStreamSubscription;
 import com.eventfullyengineered.jsqlstreamstore.subscriptions.AllSubscriptionDropped;
 import com.eventfullyengineered.jsqlstreamstore.subscriptions.HasCaughtUp;
 import com.eventfullyengineered.jsqlstreamstore.subscriptions.StreamMessageReceived;
-import com.eventfullyengineered.jsqlstreamstore.subscriptions.StreamSubscription;
-import com.eventfullyengineered.jsqlstreamstore.subscriptions.SubscriptionDropped;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;

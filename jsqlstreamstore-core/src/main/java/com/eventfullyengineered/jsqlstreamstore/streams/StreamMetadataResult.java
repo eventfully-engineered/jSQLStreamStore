@@ -2,8 +2,6 @@ package com.eventfullyengineered.jsqlstreamstore.streams;
 
 import com.google.common.base.MoreObjects;
 
-import java.math.BigInteger;
-
 /**
  *
  *

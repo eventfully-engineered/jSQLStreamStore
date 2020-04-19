@@ -1,7 +1,7 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.sqlite;
 
-import com.eventfullyengineered.jsqlstreamstore.sqlite.SqliteStreamStore;
-import com.eventfullyengineered.jsqlstreamstore.sqlite.SqliteStreamStoreSettings;
+import com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite.SqliteStreamStore;
+import com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite.SqliteStreamStoreSettings;
 import com.eventfullyengineered.jsqlstreamstore.store.ConnectionFactory;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;
 import org.apache.commons.lang3.StringUtils;

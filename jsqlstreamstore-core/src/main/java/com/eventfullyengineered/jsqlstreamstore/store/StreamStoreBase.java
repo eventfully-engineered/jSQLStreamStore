@@ -2,8 +2,8 @@ package com.eventfullyengineered.jsqlstreamstore.store;
 
 import com.eventfullyengineered.jsqlstreamstore.streams.AppendResult;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;
-import com.eventfullyengineered.jsqlstreamstore.streams.SetStreamMetadataResult;
 import com.eventfullyengineered.jsqlstreamstore.streams.StreamMessage;
+import com.eventfullyengineered.jsqlstreamstore.streams.SetStreamMetadataResult;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

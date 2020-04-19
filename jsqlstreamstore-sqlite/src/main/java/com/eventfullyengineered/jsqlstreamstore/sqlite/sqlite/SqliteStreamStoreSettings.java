@@ -1,4 +1,4 @@
-package com.eventfullyengineered.jsqlstreamstore.sqlite;
+package com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite;
 
 import com.eventfullyengineered.jsqlstreamstore.infrastructure.Ensure;
 import com.eventfullyengineered.jsqlstreamstore.infrastructure.serialization.JacksonSerializer;

@@ -1,4 +1,4 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.postgres;
 
 import com.eventfullyengineered.jsqlstreamstore.subscriptions.PollingStreamStoreNotifier;
 import io.reactivex.Observer;

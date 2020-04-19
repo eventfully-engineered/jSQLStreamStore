@@ -1,9 +1,9 @@
 package com.eventfullyengineered.jsqlstreamstore.streams;
 
+import com.eventfullyengineered.jsqlstreamstore.infrastructure.Utils;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.hash.Hashing;
-import com.eventfullyengineered.jsqlstreamstore.infrastructure.Utils;
 
 import java.nio.charset.StandardCharsets;
 

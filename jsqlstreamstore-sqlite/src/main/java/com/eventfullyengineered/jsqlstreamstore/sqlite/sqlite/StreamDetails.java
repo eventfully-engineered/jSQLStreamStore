@@ -1,4 +1,4 @@
-package com.eventfullyengineered.jsqlstreamstore.sqlite;
+package com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite;
 
 import com.google.common.base.Preconditions;
 

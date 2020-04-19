@@ -1,11 +1,11 @@
 package com.eventfullyengineered.jsqlstreamstore.postgres;
 
-import com.eventfullyengineered.jsqlstreamstore.subscriptions.PollingStreamStoreNotifier;
 import com.eventfullyengineered.jsqlstreamstore.infrastructure.Ensure;
+import com.eventfullyengineered.jsqlstreamstore.subscriptions.CreateStreamStoreNotifier;
+import com.eventfullyengineered.jsqlstreamstore.subscriptions.PollingStreamStoreNotifier;
 import com.eventfullyengineered.jsqlstreamstore.infrastructure.serialization.JacksonSerializer;
 import com.eventfullyengineered.jsqlstreamstore.infrastructure.serialization.JsonSerializerStrategy;
 import com.eventfullyengineered.jsqlstreamstore.store.ConnectionFactory;
-import com.eventfullyengineered.jsqlstreamstore.subscriptions.CreateStreamStoreNotifier;
 
 import javax.sql.DataSource;
 import java.sql.DriverManager;

@@ -1,9 +1,9 @@
 package com.eventfullyengineered.jsqlstreamstore.subscriptions;
 
 import com.eventfullyengineered.jsqlstreamstore.store.IReadOnlyStreamStore;
-import com.eventfullyengineered.jsqlstreamstore.streams.PageReadStatus;
 import com.eventfullyengineered.jsqlstreamstore.streams.ReadStreamPage;
 import com.eventfullyengineered.jsqlstreamstore.streams.StreamMessage;
+import com.eventfullyengineered.jsqlstreamstore.streams.PageReadStatus;
 import com.eventfullyengineered.jsqlstreamstore.streams.StreamVersion;
 import com.google.common.base.Strings;
 import io.reactivex.ObservableSource;

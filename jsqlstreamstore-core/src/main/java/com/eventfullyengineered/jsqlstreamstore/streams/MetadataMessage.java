@@ -2,8 +2,6 @@ package com.eventfullyengineered.jsqlstreamstore.streams;
 
 import com.google.common.base.MoreObjects;
 
-import java.math.BigInteger;
-
 /**
  * From SqlStreamStore MetadataMessage is retrieved from stream jsqlstreamstore.store (db) and then passed to
  * StreamMetadataResult (https://github.com/damianh/SqlStreamStore/blob/ebbb973959729c98836b5f95c3b55ea60eb6ef7a/src/SqlStreamStore.MsSql/MsSqlStreamStore.StreamMetadata.cs)

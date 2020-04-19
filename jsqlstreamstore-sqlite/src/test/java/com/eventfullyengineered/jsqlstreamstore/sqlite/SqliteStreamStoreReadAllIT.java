@@ -1,4 +1,4 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.sqlite;
 
 import com.eventfullyengineered.jsqlstreamstore.streams.ExpectedVersion;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;

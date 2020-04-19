@@ -1,8 +1,7 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.sqlite;
 
 import com.eventfullyengineered.jsqlstreamstore.streams.ExpectedVersion;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;
-import com.eventfullyengineered.jsqlstreamstore.streams.ReadAllPage;
 import com.eventfullyengineered.jsqlstreamstore.streams.ReadDirection;
 import com.eventfullyengineered.jsqlstreamstore.streams.ReadStreamPage;
 import com.eventfullyengineered.jsqlstreamstore.streams.StreamVersion;

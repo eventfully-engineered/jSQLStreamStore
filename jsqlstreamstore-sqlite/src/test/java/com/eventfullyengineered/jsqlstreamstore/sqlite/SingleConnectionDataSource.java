@@ -1,4 +1,4 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.sqlite;
 
 import javax.sql.DataSource;
 import java.io.PrintWriter;

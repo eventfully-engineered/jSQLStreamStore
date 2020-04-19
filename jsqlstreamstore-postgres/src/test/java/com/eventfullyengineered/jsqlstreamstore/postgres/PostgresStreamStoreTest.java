@@ -1,7 +1,5 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.postgres;
 
-import com.eventfullyengineered.jsqlstreamstore.postgres.PostgresStreamStore;
-import com.eventfullyengineered.jsqlstreamstore.postgres.PostgresStreamStoreSettings;
 import com.eventfullyengineered.jsqlstreamstore.streams.ExpectedVersion;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;
 import com.eventfullyengineered.jsqlstreamstore.streams.PageReadStatus;

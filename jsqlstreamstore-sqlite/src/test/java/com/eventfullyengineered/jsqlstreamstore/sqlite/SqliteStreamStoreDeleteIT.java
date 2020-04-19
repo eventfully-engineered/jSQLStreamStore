@@ -1,25 +1,20 @@
-package com.eventfullyengineered.jsqlstreamstore;
+package com.eventfullyengineered.jsqlstreamstore.sqlite;
 
 import com.eventfullyengineered.jsqlstreamstore.streams.ExpectedVersion;
 import com.eventfullyengineered.jsqlstreamstore.streams.NewStreamMessage;
-import com.eventfullyengineered.jsqlstreamstore.streams.Position;
-import com.eventfullyengineered.jsqlstreamstore.streams.ReadAllPage;
-import com.eventfullyengineered.jsqlstreamstore.streams.ReadDirection;
+import com.eventfullyengineered.jsqlstreamstore.streams.PageReadStatus;
 import com.eventfullyengineered.jsqlstreamstore.streams.ReadStreamPage;
-import com.eventfullyengineered.jsqlstreamstore.streams.StreamVersion;
 import com.fasterxml.uuid.Generators;
 import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SqliteStreamStoreReadStreamBackwardsIT extends BaseIT {
+class SqliteStreamStoreDeleteIT extends BaseIT {
 
     @Test
-    void readAllBackwardsTest() throws SQLException {
+    void deleteStream() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
@@ -27,17 +22,14 @@ class SqliteStreamStoreReadStreamBackwardsIT extends BaseIT {
 
         store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage});
 
-        ReadAllPage all = store.readAllBackwards(Position.END, 10, false);
+        store.deleteStream("test", ExpectedVersion.ANY);
 
-        assertTrue(all.isEnd());
-        assertEquals(ReadDirection.BACKWARD, all.getReadDirection());
-        assertEquals(1, all.getMessages().length);
-        assertEquals(newMessage.getMessageId(), all.getMessages()[0].getMessageId());
+        ReadStreamPage page = store.readStreamForwards("test", 0, 1, true);
+        assertEquals(PageReadStatus.STREAM_NOT_FOUND, page.getStatus());
     }
 
-
     @Test
-    void readStreamBackwardsNextPage() throws SQLException {
+    void deleteMessage() throws SQLException {
         NewStreamMessage newMessage = new NewStreamMessage(
             Generators.timeBasedGenerator().generate(),
             "someType",
@@ -50,12 +42,12 @@ class SqliteStreamStoreReadStreamBackwardsIT extends BaseIT {
 
         store.appendToStream("test", ExpectedVersion.NO_STREAM, new NewStreamMessage[] {newMessage, newMessageToo});
 
-        ReadStreamPage page = store.readStreamBackwards("test", StreamVersion.END, 1, false);
+        store.deleteMessage("test", newMessage.getMessageId());
 
-        assertFalse(page.isEnd());
-        assertEquals(ReadDirection.BACKWARD, page.getReadDirection());
+        ReadStreamPage page = store.readStreamForwards("test", 0, 10, false);
+        assertEquals(PageReadStatus.SUCCESS, page.getStatus());
         assertEquals(1, page.getMessages().length);
-        assertEquals(newMessageToo.getMessageId(), page.getMessages()[0].getMessageId());
+        assertEquals(newMessageToo.getMessageId(), page.getMessages().clone()[0].getMessageId());
     }
 
 }
