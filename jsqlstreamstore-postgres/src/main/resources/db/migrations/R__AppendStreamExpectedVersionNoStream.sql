@@ -8,7 +8,6 @@ DECLARE
     _stream_id integer;
     _latest_stream_version bigint;
     _latest_stream_position bigint;
-    _max_count bigint;
     message new_message;
     ret append_result;
 BEGIN
@@ -37,8 +36,8 @@ BEGIN
 	end LOOP;
 
     -- TODO: could be a function to get last stream message
-	SELECT version, position, max_count
-	INTO _latest_stream_version, _latest_stream_position, _max_count
+	SELECT version, position
+	INTO _latest_stream_version, _latest_stream_position
 	FROM public.messages
 	WHERE public.messages.stream_id = _stream_id
 	ORDER BY public.messages.position DESC
@@ -56,7 +55,7 @@ BEGIN
 	SET version = _latest_stream_version, position = _latest_stream_position
 	WHERE public.streams.id = _stream_id;
 
-    RETURN QUERY SELECT _max_count, _latest_stream_version, _latest_stream_position;
+    RETURN QUERY SELECT null::bigint, _latest_stream_version, _latest_stream_position;
 
 END;
 $$ LANGUAGE plpgsql
