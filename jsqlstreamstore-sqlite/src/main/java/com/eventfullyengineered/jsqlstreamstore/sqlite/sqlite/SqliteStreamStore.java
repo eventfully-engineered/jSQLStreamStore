@@ -309,7 +309,7 @@ public class SqliteStreamStore extends StreamStoreBase {
                                                   ReadNextAllPage readNextAllPage) throws SQLException {
         long ordinal = fromPositionExclusive;
 
-        int resultSetCount;
+        int resultSetCount = 0;
         String commandText = prefetch ? scripts.readAllForwardWithData() : scripts.readAllForward();
         try (Connection connection = connectionFactory.openConnection();
              PreparedStatement stmt = connection.prepareStatement(commandText)) {
@@ -321,6 +321,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
                 while (result.next()) {
+                    resultSetCount++;
                     if (messages.size() < maxCount) {
                         int streamId = result.getInt(1);
                         String streamName = result.getString(2);
@@ -357,12 +358,9 @@ public class SqliteStreamStore extends StreamStoreBase {
                                 () -> getJsonData(streamId, streamVersion)
                             );
                         }
-
-
                         messages.add(message);
                     }
                 }
-                resultSetCount = result.getRow();
             }
 
             if (messages.isEmpty()) {
