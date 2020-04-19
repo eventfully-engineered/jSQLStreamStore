@@ -9,6 +9,7 @@ import com.eventfullyengineered.jsqlstreamstore.store.IReadOnlyStreamStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -37,7 +38,14 @@ public class PollingStreamStoreNotifier implements StreamStoreNotifier {
      * @param readonlyStreamStore The store to poll
      */
     public PollingStreamStoreNotifier(IReadOnlyStreamStore readonlyStreamStore) {
-        this(() -> readonlyStreamStore.readHeadPosition(), 1000);
+        this(() -> {
+            try {
+                return readonlyStreamStore.readHeadPosition();
+            } catch (SQLException ex) {
+                // TODO: fix
+                throw new RuntimeException(ex);
+            }
+        }, 1000);
     }
 
     /**
@@ -45,7 +53,7 @@ public class PollingStreamStoreNotifier implements StreamStoreNotifier {
      * @param readHeadPosition An operation to read the head position of a store
      * @param interval The interval to poll in milliseconds
      */
-    public PollingStreamStoreNotifier(Supplier<Long> readHeadPosition, long interval) {
+    public PollingStreamStoreNotifier(Supplier<Long> readHeadPosition, long interval)  {
         this(readHeadPosition, interval, Schedulers.newThread());
     }
 

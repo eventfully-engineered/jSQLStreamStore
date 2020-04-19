@@ -63,7 +63,7 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    public ReadAllPage readAllForwardsInternal(long fromPositionExclusive, long maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException {
+    public ReadAllPage readAllForwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException {
         long ordinal = fromPositionExclusive;
 
         int resultSetCount;
@@ -142,7 +142,7 @@ public class PostgresStreamStore extends StreamStoreBase {
 
     @Override
     public ReadAllPage readAllBackwardsInternal(long fromPositionExclusive,
-                                                long maxCount,
+                                                int maxCount,
                                                 boolean prefetch,
                                                 ReadNextAllPage readNextAllPage) throws SQLException {
         long ordinal = fromPositionExclusive == Position.END ? Long.MAX_VALUE : fromPositionExclusive;
@@ -152,7 +152,7 @@ public class PostgresStreamStore extends StreamStoreBase {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(commandText)) {
             stmt.setLong(1, ordinal);
             // Read extra row to see if at end or not
-            stmt.setLong(2, maxCount == Long.MAX_VALUE ? maxCount : maxCount + 1);
+            stmt.setLong(2, maxCount == Integer.MAX_VALUE ? maxCount : maxCount + 1);
 
             List<StreamMessage> messages = new ArrayList<>();
             try (ResultSet result = stmt.executeQuery()) {
@@ -225,7 +225,7 @@ public class PostgresStreamStore extends StreamStoreBase {
     @Override
     public ReadStreamPage readStreamForwardsInternal(String streamName,
                                                      long start,
-                                                     long count,
+                                                     int count,
                                                      boolean prefetch,
                                                      ReadNextStreamPage readNext) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
@@ -243,7 +243,7 @@ public class PostgresStreamStore extends StreamStoreBase {
     @Override
     public ReadStreamPage readStreamBackwardsInternal(String streamName,
                                                       long start,
-                                                      long count,
+                                                      int count,
                                                       boolean prefetch,
                                                       ReadNextStreamPage readNext) throws SQLException {
         try (Connection connection = connectionFactory.openConnection()) {
@@ -259,15 +259,11 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    public Long readHeadPositionInternal() {
+    public Long readHeadPositionInternal() throws SQLException {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(scripts.readHeadPosition());
                 ResultSet result = stmt.executeQuery()) {
             result.next();
-            // TODO: use constant
-            return result.wasNull() ? -1L : result.getLong(1);
-        } catch (SQLException ex) {
-            // TODO: do we want to throw SqlException?
-            throw new RuntimeException(ex);
+            return result.wasNull() ? Position.END : result.getLong(1);
         }
     }
 
@@ -299,12 +295,12 @@ public class PostgresStreamStore extends StreamStoreBase {
     }
 
     @Override
-    protected int getStreamMessageCount(String streamId) throws SQLException {
+    protected long getStreamMessageCount(String streamId) throws SQLException {
         try (PreparedStatement stmt = connectionFactory.openConnection().prepareStatement(scripts.getStreamMessageCount())) {
             stmt.setString(1, streamId);
             try (ResultSet result = stmt.executeQuery()) {
                 result.next();
-                return result.getInt(1);
+                return result.getLong(1);
             }
         }
     }
@@ -445,9 +441,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             connection.rollback();
             // Should we catch a PGSqlException instead?
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L177
-            // SQLIntegrityConstraintViolationException
-            // TODO: fix thix. should be contains but SqlCode might be better????
-            if ("IX_Messages_StreamIdInternal_Id".equals(ex.getMessage())) {
+            if (PSQLState.UNIQUE_VIOLATION.getState().equals(ex.getSQLState())) {
                 long streamVersion = getStreamVersionOfMessageId(
                     connection,
                     streamName,
@@ -477,13 +471,7 @@ public class PostgresStreamStore extends StreamStoreBase {
                     page.getLastStreamPosition());
             }
 
-            // TODO: fix this....doesn't seem to work. check docs
-            if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(streamName, ExpectedVersion.ANY, ex);
-            }
-
-            // throw ex;
-            throw new RuntimeException("sql exception occurred", ex);
+            throw ex;
         }
 
     }
@@ -537,19 +525,8 @@ public class PostgresStreamStore extends StreamStoreBase {
             // might be better to use idempotent write in sql script such as SqlStreamStore postgres
             connection.rollback();
 
-            // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L177
-            // SQLIntegrityConstraintViolationException
-            // 23505
-            // ix_streams_id
-
-            // TODO: this doesnt appear to work
-            if (ex instanceof SQLIntegrityConstraintViolationException) {
-                LOG.warn("integrity constraint violation");
-            }
-
-            if ("23505".equals(ex.getSQLState())) {
+            if (PSQLState.UNIQUE_VIOLATION.getState().equals(ex.getSQLState())) {
                 ReadStreamPage page = readStreamInternal(
-                    // sqlStreamId,
                     streamName,
                     StreamVersion.START,
                     messages.length,
@@ -567,19 +544,15 @@ public class PostgresStreamStore extends StreamStoreBase {
                         throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
                     }
                 }
+
+                // TODO: get max count
                 return new AppendResult(
                     null,
                     page.getLastStreamVersion(),
                     page.getLastStreamPosition());
             }
 
-            // TODO: fix this....doesn't seem to work. check docs
-            if (ex instanceof SQLIntegrityConstraintViolationException) {
-                throw new WrongExpectedVersion(streamName, ExpectedVersion.NO_STREAM, ex);
-            }
-
-            // throw ex;
-            throw new RuntimeException("sql exception occurred", ex);
+            throw ex;
         }
 
     }
@@ -660,7 +633,6 @@ public class PostgresStreamStore extends StreamStoreBase {
             // https://github.com/SQLStreamStore/SQLStreamStore/blob/f7c3045f74d14be120f0c15cb0b25c48c173f012/src/SqlStreamStore.MsSql/MsSqlStreamStore.AppendStream.cs#L372
             if ("WrongExpectedVersion".equals(ex.getMessage())) {
                 ReadStreamPage page = readStreamInternal(
-                    // sqlStreamId,
                     streamName,
                     expectedVersion + 1,
                     messages.length,
@@ -726,7 +698,6 @@ public class PostgresStreamStore extends StreamStoreBase {
     protected void deleteMessageInternal(String streamName, UUID messageId) throws SQLException {
 
         // TODO: could we batch the delete and inserts?
-        // TODO: SQLStreamStore also does this via a taskqueue
         try (Connection connection = connectionFactory.openConnection()) {
             connection.setAutoCommit(false);
 
@@ -762,7 +733,6 @@ public class PostgresStreamStore extends StreamStoreBase {
 
             result = appendToStreamInternal(
                 connection,
-                // sqlStreamId.getMetadataSqlStreamId(),
                 streamName,
                 expectedStreamMetadataVersion,
                 new NewStreamMessage[]{newMessage});
@@ -821,7 +791,6 @@ public class PostgresStreamStore extends StreamStoreBase {
             if (cstmt.wasNull()) {
                 return new ReadStreamPage(
                     streamName,
-                    // sqlStreamId.getOriginalId(),
                     PageReadStatus.STREAM_NOT_FOUND,
                     start,
                     StreamVersion.END,
@@ -911,23 +880,30 @@ public class PostgresStreamStore extends StreamStoreBase {
         }
     }
 
-    // TODO: make async/reactive
+    // TODO: delete in background thread task queue. make async/reactive?
     private void checkStreamMaxCount(String streamName, Long maxCount) throws SQLException {
         if (maxCount != null) {
-            Integer count = getStreamMessageCount(streamName);
+            long count = getStreamMessageCount(streamName);
             if (count > maxCount) {
-                long toPurge = count - maxCount;
-                ReadStreamPage streamMessagesPage = readStreamForwardsInternal(
-                    streamName,
-                    StreamVersion.START,
-                    toPurge,
-                    false,
-                    null);
+                long totalToPurge = count - maxCount;
+                while (totalToPurge > 0) {
 
-                if (streamMessagesPage.getStatus() == PageReadStatus.SUCCESS) {
-                    for (StreamMessage message : streamMessagesPage.getMessages()) {
-                        deleteMessageInternal(streamName, message.getMessageId());
+                    int pageSize = totalToPurge > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalToPurge;
+                    ReadStreamPage streamMessagesPage = readStreamForwardsInternal(
+                        streamName,
+                        StreamVersion.START,
+                        pageSize,
+                        false,
+                        null);
+
+                    // TODO: batch?
+                    if (streamMessagesPage.getStatus() == PageReadStatus.SUCCESS) {
+                        for (StreamMessage message : streamMessagesPage.getMessages()) {
+                            deleteMessageInternal(streamName, message.getMessageId());
+                        }
                     }
+
+                    totalToPurge = count;
                 }
             }
         }

@@ -85,7 +85,7 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
      * As soon as there are events, both the in memory and the sql implementation seem to be doing the right thing.
      *
      */
-    private AppendResult createAppendResultAtHeadPosition(long expectedVersion) {
+    private AppendResult createAppendResultAtHeadPosition(long expectedVersion) throws SQLException {
         Long position = readHeadPosition();
         return new AppendResult(expectedVersion, position);
     }
@@ -135,7 +135,7 @@ public abstract class StreamStoreBase extends ReadOnlyStreamStoreBase implements
 	 * @param streamName The stream name
 	 * @return The number of messages in a stream.
 	 */
-    protected abstract int getStreamMessageCount(String streamName) throws SQLException;
+    protected abstract long getStreamMessageCount(String streamName) throws SQLException;
 
     /**
      * Queues a task to purge expired message.

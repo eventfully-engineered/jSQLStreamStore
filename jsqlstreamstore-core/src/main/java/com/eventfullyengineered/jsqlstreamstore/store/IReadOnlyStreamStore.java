@@ -29,7 +29,7 @@ public interface IReadOnlyStreamStore {
      * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
      * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
-    ReadAllPage readAllForwards(long fromPositionInclusive, long maxCount, boolean prefetch) throws SQLException;
+    ReadAllPage readAllForwards(long fromPositionInclusive, int maxCount, boolean prefetch) throws SQLException;
 
     /**
      *
@@ -38,7 +38,7 @@ public interface IReadOnlyStreamStore {
      * @param prefetch Prefetches the message data as part of the page read. This means a single request to the server but a higher payload size.
      * @return An @{link ReadAllPage} presenting the result of the read. If all messages read have expired then the message collection MAY be empty.
      */
-    ReadAllPage readAllBackwards(long fromPositionInclusive, long maxCount, boolean prefetch) throws SQLException;
+    ReadAllPage readAllBackwards(long fromPositionInclusive, int maxCount, boolean prefetch) throws SQLException;
 
     /**
      *
@@ -51,7 +51,7 @@ public interface IReadOnlyStreamStore {
     ReadStreamPage readStreamForwards(
         String streamName,
         long fromVersionInclusive,
-        long maxCount,
+        int maxCount,
         boolean prefetch) throws SQLException;
 
     /**
@@ -64,7 +64,7 @@ public interface IReadOnlyStreamStore {
      */
     ReadStreamPage readStreamBackwards(String streamName,
                                        long fromVersionInclusive,
-                                       long maxCount,
+                                       int maxCount,
                                        boolean prefetch) throws SQLException;
 
 
@@ -72,7 +72,7 @@ public interface IReadOnlyStreamStore {
 	 * Reads the head position (the position of the very latest message).
 	 * @return the head position
 	 */
-	Long readHeadPosition();
+	Long readHeadPosition() throws SQLException;
 
 	/**
 	 * Gets the stream metadata

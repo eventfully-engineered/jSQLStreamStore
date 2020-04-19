@@ -42,7 +42,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
     }
 
 	@Override
-	public ReadAllPage readAllForwards(final long fromPositionInclusive, final long maxCount, final boolean prefetch) throws SQLException {
+	public ReadAllPage readAllForwards(final long fromPositionInclusive, final int maxCount, final boolean prefetch) throws SQLException {
 	    Ensure.nonnegative(fromPositionInclusive, "fromPositionInclusive");
 	    Ensure.positive(maxCount, "maxCount");
 
@@ -79,7 +79,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 	}
 
 	@Override
-	public ReadAllPage readAllBackwards(long fromPositionInclusive, long maxCount, boolean prefetch)  throws SQLException {
+	public ReadAllPage readAllBackwards(long fromPositionInclusive, int maxCount, boolean prefetch)  throws SQLException {
 	    Preconditions.checkArgument(fromPositionInclusive >= -1);
 	    Ensure.positive(maxCount, "maxCount");
 
@@ -93,7 +93,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 	}
 
 	@Override
-	public ReadStreamPage readStreamForwards(String streamName, long fromVersionInclusive, long maxCount, boolean prefetch) throws SQLException {
+	public ReadStreamPage readStreamForwards(String streamName, long fromVersionInclusive, int maxCount, boolean prefetch) throws SQLException {
 		// TODO: do we need -- ensure stream id is not null, empty or whitespaces
         Preconditions.checkArgument(fromVersionInclusive >= 0);
 		Preconditions.checkArgument(maxCount >= 1);
@@ -108,7 +108,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 	}
 
 	@Override
-	public ReadStreamPage readStreamBackwards(String streamName, long fromVersionInclusive, long maxCount, boolean prefetch) throws SQLException {
+	public ReadStreamPage readStreamBackwards(String streamName, long fromVersionInclusive, int maxCount, boolean prefetch) throws SQLException {
         // TODO: do we need -- ensure stream id is not null, empty or whitespaces
         Preconditions.checkArgument(fromVersionInclusive >= -1);
         Preconditions.checkArgument(maxCount >= 1);
@@ -123,7 +123,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 	}
 
 	@Override
-	public Long readHeadPosition() {
+	public Long readHeadPosition() throws SQLException {
 		return readHeadPositionInternal();
 	}
 
@@ -177,15 +177,15 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
         boolean prefetchJsonData,
         String name);
 
-	protected abstract ReadAllPage readAllForwardsInternal(long fromPositionExclusive, long maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
+	protected abstract ReadAllPage readAllForwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
 
-	protected abstract ReadAllPage readAllBackwardsInternal(long fromPositionExclusive, long maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
+	protected abstract ReadAllPage readAllBackwardsInternal(long fromPositionExclusive, int maxCount, boolean prefetch, ReadNextAllPage readNextAllPage) throws SQLException;
 
-	protected abstract ReadStreamPage readStreamForwardsInternal(String streamName, long start, long count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
+	protected abstract ReadStreamPage readStreamForwardsInternal(String streamName, long start, int count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
 
-	protected abstract ReadStreamPage readStreamBackwardsInternal(String streamName, long fromVersionInclusive, long count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
+	protected abstract ReadStreamPage readStreamBackwardsInternal(String streamName, long fromVersionInclusive, int count, boolean prefetch, ReadNextStreamPage readNextStreamPage) throws SQLException;
 
-	protected abstract Long readHeadPositionInternal();
+	protected abstract Long readHeadPositionInternal() throws SQLException;
 
 	protected abstract StreamMetadataResult getStreamMetadataInternal(String streamName) throws SQLException;
 
@@ -194,7 +194,7 @@ public abstract class ReadOnlyStreamStoreBase implements IReadOnlyStreamStore {
 	// TODO: async task  / executor
     private ReadAllPage reloadAfterDelay(
         long fromPositionInclusive,
-        long maxCount,
+        int maxCount,
         boolean prefetch,
         ReadNextAllPage readNext) {
 
