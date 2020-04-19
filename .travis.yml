@@ -31,7 +31,8 @@ script:
 after_script:
   - JACOCO_SOURCE_PATH="jsqlstreamstore-core/src/main/java" ./cc-test-reporter format-coverage -d -t jacoco -o coverage/codeclimate.core.json ./jsqlstreamstore-core/target/site/jacoco/jacoco.xml
   - JACOCO_SOURCE_PATH="jsqlstreamstore-postgres/src/main/java" ./cc-test-reporter format-coverage -d -t jacoco -o coverage/codeclimate.postgres.json ./jsqlstreamstore-postgres/target/site/jacoco/jacoco.xml
-  - ./cc-test-reporter sum-coverage coverage/codeclimate.*.json -p 2
+  - JACOCO_SOURCE_PATH="jsqlstreamstore-sqlite/src/main/java" ./cc-test-reporter format-coverage -d -t jacoco -o coverage/codeclimate.sqlite.json ./jsqlstreamstore-sqlite/target/site/jacoco/jacoco.xml
+  - ./cc-test-reporter sum-coverage coverage/codeclimate.*.json -p 3
   - if [[ "$TRAVIS_TEST_RESULT" == 0 ]]; then ./cc-test-reporter upload-coverage; fi
 
 after_success:
