@@ -164,29 +164,16 @@
 
         <profile>
             <id>release</id>
-            <activation>
-                <property>
-                    <name>release</name>
-                </property>
-            </activation>
-
             <build>
                 <plugins>
-                    <!-- To release to Maven central -->
                     <plugin>
-                        <groupid>org.sonatype.plugins</groupid>
-                        <artifactid>nexus-staging-maven-plugin</artifactid>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverid>ossrh</serverid>
-                            <nexusurl>https://oss.sonatype.org/</nexusurl>
-                            <autoreleaseafterclose>true</autoreleaseafterclose>
-                        </configuration>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
                     </plugin>
                     <!-- To sign the artifacts -->
                     <plugin>
-                        <groupid>org.apache.maven.plugins</groupid>
-                        <artifactid>maven-gpg-plugin</artifactid>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -351,7 +338,7 @@
                         <id>enforce</id>
                         <configuration>
                             <rules>
-                                <DependencyConvergence />
+                                <DependencyConvergence/>
                                 <bannedDependencies>
                                     <excludes>
                                         <!-- This should not exist as it will force SLF4J calls to be delegated to log4j -->
