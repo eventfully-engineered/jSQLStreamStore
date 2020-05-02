@@ -130,10 +130,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
             // should never be null here
             assert lastStreamMessage != null;
-
-            LOGGER.info("streamDetails: [{}]", streamDetails);
-            LOGGER.info("last stream message: [{}]", lastStreamMessage);
-
+            
             updateStream(connection, streamDetails.getId(), lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
 
             connection.commit();
