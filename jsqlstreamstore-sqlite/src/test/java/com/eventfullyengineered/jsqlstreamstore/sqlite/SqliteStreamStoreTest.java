@@ -31,7 +31,7 @@ class SqliteStreamStoreTest {
 
         Flyway flyway = Flyway.configure()
             .dataSource(ds)
-            .locations("classpath:db/migrations")
+            .locations("classpath:db/migration")
             .load();
         flyway.migrate();
     }
