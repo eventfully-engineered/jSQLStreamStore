@@ -7,11 +7,15 @@
     <parent>
         <groupId>com.eventfullyengineered.jsqlstreamstore</groupId>
         <artifactId>jsqlstreamstore-parent</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>0.0.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>jsqlstreamstore-postgres</artifactId>
     <name>jSqlStreamStore Postgres</name>
+
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
 
     <dependencyManagement>
         <dependencies>

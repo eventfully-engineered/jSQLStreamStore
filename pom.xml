@@ -7,7 +7,7 @@
     <groupId>com.eventfullyengineered.jsqlstreamstore</groupId>
     <artifactId>jsqlstreamstore-parent</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
     <name>jSQLStreamStore</name>
     <description>A Java stream store library specifically targeting SQL based implementations.</description>
 
