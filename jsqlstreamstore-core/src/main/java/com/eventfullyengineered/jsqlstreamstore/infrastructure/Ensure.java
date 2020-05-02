@@ -17,10 +17,11 @@ public final class Ensure {
 		return t;
 	}
 
-	public static void notNullOrEmpty(String argument, String argumentName) {
+	public static String notNullOrEmpty(String argument, String argumentName) {
 		if (Strings.isNullOrEmpty(argument)) {
 			throw new IllegalArgumentException(argument);
 		}
+		return argument;
 	}
 
 	public static void positive(int number, String argumentName) {
