@@ -285,7 +285,7 @@ public class PostgresStreamStore extends StreamStoreBase {
             return new StreamMetadataResult(streamName, -1);
         }
 
-        MetadataMessage metadataMessage = jsonSerializerStrategy.fromJson(page.getMessages()[0].getJsonData(), MetadataMessage.class);
+        MetadataMessage metadataMessage = jsonSerializerStrategy.fromJson(page.getMessages()[0].getData(), MetadataMessage.class);
         return new StreamMetadataResult(
                 streamName,
                 page.getLastStreamVersion(),

@@ -130,7 +130,7 @@ public class SqliteStreamStore extends StreamStoreBase {
 
             // should never be null here
             assert lastStreamMessage != null;
-            
+
             updateStream(connection, streamDetails.getId(), lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
 
             connection.commit();
@@ -539,7 +539,7 @@ public class SqliteStreamStore extends StreamStoreBase {
             return new StreamMetadataResult(streamName, -1);
         }
 
-        MetadataMessage metadataMessage = jsonSerializerStrategy.fromJson(message.getJsonData(), MetadataMessage.class);
+        MetadataMessage metadataMessage = jsonSerializerStrategy.fromJson(message.getData(), MetadataMessage.class);
         return new StreamMetadataResult(
             streamName,
             message.getStreamVersion(),

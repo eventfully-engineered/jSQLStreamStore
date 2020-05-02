@@ -88,7 +88,7 @@ class PostgresStreamStoreTest {
         assertEquals(1, page.getMessages().length);
         assertEquals(newMessage.getMessageId(), page.getMessages()[0].getMessageId());
 
-        assertNotNull(page.getMessages()[0].getJsonData());
+        assertNotNull(page.getMessages()[0].getData());
     }
 
     @Test
