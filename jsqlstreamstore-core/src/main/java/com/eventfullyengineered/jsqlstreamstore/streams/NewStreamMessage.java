@@ -34,13 +34,9 @@ public class NewStreamMessage {
      * @param metadata
      */
     public NewStreamMessage(UUID messageId, String type, String data, String metadata) {
-        Ensure.notNull(messageId);
-        Ensure.notNullOrEmpty(type, "type");
-        Ensure.notNullOrEmpty(data, "data");
-
-        this.messageId = messageId;
-        this.type = type;
-        this.data = data;
+        this.messageId = Ensure.notNull(messageId);
+        this.type = Ensure.notNullOrEmpty(type, "type");
+        this.data = Ensure.notNullOrEmpty(data, "data");
         this.metadata = metadata;
     }
 
