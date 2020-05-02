@@ -25,7 +25,6 @@ class BaseIT {
 
         Flyway flyway = Flyway.configure()
             .dataSource(ds)
-            .locations("classpath:db/migrations")
             .load();
         flyway.migrate();
     }
