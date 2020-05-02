@@ -15,7 +15,7 @@ public class StreamMessage {
     private final String metadata;
     private final long streamVersion;
     private final String type;
-    private final GetJsonData getJsonData;
+    private final GetJsonData getData;
 
     /**
      *
@@ -65,7 +65,7 @@ public class StreamMessage {
         this.createdUtc = createdUtc;
         this.type = type;
         this.metadata = metadata;
-        this.getJsonData = getData;
+        this.getData = getData;
     }
 
     public long getPosition() {
@@ -96,8 +96,8 @@ public class StreamMessage {
         return type;
     }
 
-    public String getJsonData() throws SQLException {
-        return getJsonData.get();
+    public String getData() throws SQLException {
+        return getData.get();
     }
 
     @Override
