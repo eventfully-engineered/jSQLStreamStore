@@ -44,7 +44,7 @@ import static org.sqlite.SQLiteErrorCode.SQLITE_CONSTRAINT_UNIQUE;
 
 public class SqliteStreamStore extends StreamStoreBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SqliteStreamStore.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SqliteStreamStore.class);
 
     private final ConnectionFactory connectionFactory;
     private final Scripts scripts;
@@ -126,10 +126,13 @@ public class SqliteStreamStore extends StreamStoreBase {
 
             batchInsert(connection, streamDetails.getId(), messages, streamDetails.getVersion());
 
-            StreamMessage lastStreamMessage = getLastStreamMessage(streamName);
+            StreamMessage lastStreamMessage = getLastStreamMessage(connection, streamName);
 
             // should never be null here
             assert lastStreamMessage != null;
+
+            LOGGER.info("streamDetails: [{}]", streamDetails);
+            LOGGER.info("last stream message: [{}]", lastStreamMessage);
 
             updateStream(connection, streamDetails.getId(), lastStreamMessage.getStreamVersion(), lastStreamMessage.getPosition());
 
@@ -530,7 +533,11 @@ public class SqliteStreamStore extends StreamStoreBase {
 
     @Override
     protected StreamMetadataResult getStreamMetadataInternal(String streamName) throws SQLException {
-        StreamMessage message = getLastStreamMessage(streamName);
+        final StreamMessage message;
+        try (Connection connection = connectionFactory.openConnection()) {
+            message = getLastStreamMessage(connection, streamName);
+        }
+
         if (message == null) {
             return new StreamMetadataResult(streamName, -1);
         }
@@ -762,18 +769,15 @@ public class SqliteStreamStore extends StreamStoreBase {
     }
 
     // TODO: should this return null?
-    private StreamMessage getLastStreamMessage(String streamName) throws SQLException {
-        final ReadStreamPage page;
-        try (Connection connection = connectionFactory.openConnection()) {
-            page = readStreamInternal(
-                streamName,
-                StreamVersion.END,
-                1,
-                ReadDirection.BACKWARD,
-                true,
-                null,
-                connection);
-        }
+    private StreamMessage getLastStreamMessage(Connection connection, String streamName) throws SQLException {
+        final ReadStreamPage page = readStreamInternal(
+            streamName,
+            StreamVersion.END,
+            1,
+            ReadDirection.BACKWARD,
+            true,
+            null,
+            connection);
 
         if (page.getStatus() == PageReadStatus.STREAM_NOT_FOUND) {
             return null;
