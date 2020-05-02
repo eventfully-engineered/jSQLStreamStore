@@ -1,5 +1,6 @@
 package com.eventfullyengineered.jsqlstreamstore.sqlite.sqlite;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 
 public class StreamDetails {
@@ -54,4 +55,15 @@ public class StreamDetails {
         return new StreamDetails(null, streamName, -1, -1, null, null);
     }
 
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+            .add("id", id)
+            .add("name", name)
+            .add("version", version)
+            .add("position", position)
+            .add("maxAge", maxAge)
+            .add("maxCount", maxCount)
+            .toString();
+    }
 }
